@@ -1,0 +1,65 @@
+
+**/.env
+**/node_modules
+**/Dockerfile
+**/.dockerignore
+**/__pycache__/
+
+
+**/vendor
+
+## IDEs
+.vscode/
+*.pydevproject
+.project
+.metadata
+*.swp
+*~.nib
+local.properties
+.classpath
+.loadpath
+.externalToolBuilders/
+.buildpath
+*.launch
+.settings/
+.cproject
+.buildpath
+
+## OSes
+[Tt]humbs.db
+[Dd]esktop.ini
+*.DS_store
+*.DS_Store
+
+## Misc
+**/bin/
+**/tmp/
+*.tmp
+*.bak
+*.log
+*.[Cc]ache
+*.cpr
+*.orig
+*.php.in
+.idea/
+temp/
+.Trashes
+.svn
+*.codekit
+*.scssc
+._*
+
+## Distribute
+**/dist/
+**/bundle/
+
+## Angular
+**/environments/environment.prod.ts
+**/environments/environment.ts
+
+
+
+**/download/**
+**/downloads/**
+
+
