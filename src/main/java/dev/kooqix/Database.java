@@ -21,15 +21,8 @@ import dev.kooqix.exceptions.NoSuchDatabaseException;
 import dev.kooqix.node.Node;
 import dev.kooqix.node.NodeType;
 import dev.kooqix.relationships.Relationship;
-import scala.$eq$colon$eq;
-import scala.Function1;
-import scala.Function2;
-import scala.Function3;
-import scala.Option;
-import scala.collection.immutable.Seq;
-import scala.reflect.ClassTag;
 
-public class Database extends Graph<Node, Relationship> {
+public class Database {
 
 	//////////////////// Configuration variables \\\\\\\\\\\\\\\\\\\\
 
@@ -49,12 +42,11 @@ public class Database extends Graph<Node, Relationship> {
 	private String dir;
 	private String name;
 	private Collection<NodeType> nodetypes;
+	private Graph<Node, Relationship> graph;
 
 	private static Map<String, Database> db = new HashMap<String, Database>();
 
 	private Database(String name) {
-		super(null, null);
-
 		this.setName(name);
 
 		// Load available nodetypes
@@ -158,135 +150,5 @@ public class Database extends Graph<Node, Relationship> {
 	@Override
 	public String toString() {
 		return MessageFormat.format("{0}\n\t{1} nodetypes", this.name.toUpperCase(), this.nodetypes.size());
-	}
-
-	//////////////////// Graph methods \\\\\\\\\\\\\\\\\\\\
-
-	@Override
-	public VertexRDD aggregateMessagesWithActiveSet(Function1 sendMsg, Function2 mergeMsg, TripletFields tripletFields,
-			Option activeSetOpt, ClassTag evidence$12) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph cache() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void checkpoint() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public EdgeRDD edges() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Seq getCheckpointFiles() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph groupEdges(Function2 merge) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public boolean isCheckpointed() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public Graph mapEdges(Function2 map, ClassTag evidence$5) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph mapTriplets(Function2 map, TripletFields tripletFields, ClassTag evidence$8) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph mapVertices(Function2 map, ClassTag evidence$3, $eq$colon$eq eq) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph mask(Graph other, ClassTag evidence$9, ClassTag evidence$10) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph outerJoinVertices(RDD other, Function3 mapFunc, ClassTag evidence$13, ClassTag evidence$14,
-			$eq$colon$eq eq) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph partitionBy(PartitionStrategy partitionStrategy) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph partitionBy(PartitionStrategy partitionStrategy, int numPartitions) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph persist(StorageLevel newLevel) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph reverse() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph subgraph(Function1 epred, Function2 vpred) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public RDD triplets() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph unpersist(boolean blocking) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Graph unpersistVertices(boolean blocking) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public VertexRDD vertices() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
