@@ -1,24 +1,39 @@
 package dev.kooqix.node;
 
+import java.io.Serializable;
 import java.util.Map;
+import java.util.UUID;
 
-public class Node {
+public class Node implements Serializable {
 	private NodeType nodetype;
-	private String uuid;
-	private Map<String, Object> content;
+	private Long uuid;
+	// private Map<String, Object> content;
+	private String content;
 
-	public Node(NodeType nodetype, String uuid, Map<String, Object> content) {
+	// public Node(NodeType nodetype, String uuid, Map<String, Object> content) {
+	// this.nodetype = nodetype;
+	// this.uuid = uuid;
+	// this.content = content;
+	// }
+
+	public Node(NodeType nodetype, Long uuid, String content) {
 		this.nodetype = nodetype;
 		this.uuid = uuid;
 		this.content = content;
 	}
 
+	public Node(NodeType nodetype, String content) {
+		this.nodetype = nodetype;
+		this.content = content;
+		this.uuid = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+	}
+
 	/**
 	 * @return the content
 	 */
-	public Map<String, Object> getContent() {
-		return content;
-	}
+	// public Map<String, Object> getContent() {
+	// return content;
+	// }
 
 	/**
 	 * @return the nodetype
@@ -30,7 +45,7 @@ public class Node {
 	/**
 	 * @return the uuid
 	 */
-	public String getUUId() {
+	public Long getUUId() {
 		return uuid;
 	}
 

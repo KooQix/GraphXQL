@@ -15,6 +15,7 @@ import org.apache.spark.graphx.Graph;
 import org.apache.spark.graphx.GraphLoader;
 import org.apache.spark.storage.StorageLevel;
 
+import dev.kooqix.exceptions.NoSuchDatabaseException;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 
@@ -54,9 +55,9 @@ class Vertex implements Serializable {
  *
  */
 public class App {
-	public static void main(String[] args) {
-		final SparkConf conf = new SparkConf().setAppName("GraphXQL");
-		JavaSparkContext sc = new JavaSparkContext(conf);
+	public static void main(String[] args) throws NoSuchDatabaseException {
+		// final SparkConf conf = new SparkConf().setAppName("GraphXQL");
+		// JavaSparkContext sc = new JavaSparkContext(conf);
 
 		// SparkContext sc = new SparkContext(conf);
 
@@ -109,87 +110,105 @@ public class App {
 
 		//////////////////// Create and save \\\\\\\\\\\\\\\\\\\\
 
-		List<Tuple2<Object, Vertex>> listOfVertex = new ArrayList<>();
-		Vertex v1 = new Vertex("name1", "surname1");
-		Vertex v2 = new Vertex("name2", "surname2");
-		Vertex v3 = new Vertex("name3", "surname3");
-		Vertex v4 = new Vertex("name4", "surname4");
+		// List<Tuple2<Object, Vertex>> listOfVertex = new ArrayList<>();
+		// Vertex v1 = new Vertex("name1", "surname1");
+		// Vertex v2 = new Vertex("name2", "surname2");
+		// Vertex v3 = new Vertex("name3", "surname3");
+		// Vertex v4 = new Vertex("name4", "surname4");
 
-		listOfVertex.add(new Tuple2<>(v1.getId(), v1));
-		listOfVertex.add(new Tuple2<>(v2.getId(), v2));
-		listOfVertex.add(new Tuple2<>(v3.getId(), v3));
-		listOfVertex.add(new Tuple2<>(v4.getId(), v4));
+		// listOfVertex.add(new Tuple2<>(v1.getId(), v1));
+		// listOfVertex.add(new Tuple2<>(v2.getId(), v2));
+		// listOfVertex.add(new Tuple2<>(v3.getId(), v3));
+		// listOfVertex.add(new Tuple2<>(v4.getId(), v4));
 
-		List<Edge<String>> listOfEdge = new ArrayList<>();
-		listOfEdge.add(new Edge<>(v1.getId(), v2.getId(), "Friend"));
-		listOfEdge.add(new Edge<>(v2.getId(), v3.getId(), "Friend"));
-		listOfEdge.add(new Edge<>(v3.getId(), v4.getId(), "Friend"));
-		listOfEdge.add(new Edge<>(v4.getId(), v1.getId(), "Friend"));
+		// List<Edge<String>> listOfEdge = new ArrayList<>();
+		// listOfEdge.add(new Edge<>(v1.getId(), v2.getId(), "Friend"));
+		// listOfEdge.add(new Edge<>(v2.getId(), v3.getId(), "Friend"));
+		// listOfEdge.add(new Edge<>(v3.getId(), v4.getId(), "Friend"));
+		// listOfEdge.add(new Edge<>(v4.getId(), v1.getId(), "Friend"));
 
-		JavaRDD<Tuple2<Object, Vertex>> vertexRDD = sc.parallelize(listOfVertex);
-		JavaRDD<Edge<String>> edgeRDD = sc.parallelize(listOfEdge);
+		// JavaRDD<Tuple2<Object, Vertex>> vertexRDD = sc.parallelize(listOfVertex);
+		// JavaRDD<Edge<String>> edgeRDD = sc.parallelize(listOfEdge);
 
-		ClassTag<Vertex> vertexTag = scala.reflect.ClassTag$.MODULE$.apply(Vertex.class);
-		ClassTag<String> stringTag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
+		// ClassTag<Vertex> vertexTag =
+		// scala.reflect.ClassTag$.MODULE$.apply(Vertex.class);
+		// ClassTag<String> stringTag =
+		// scala.reflect.ClassTag$.MODULE$.apply(String.class);
 
-		Graph<Vertex, String> graph = Graph.apply(
-				vertexRDD.rdd(),
-				edgeRDD.rdd(),
-				new Vertex("name", "surname"),
-				StorageLevel.MEMORY_ONLY(),
-				StorageLevel.MEMORY_ONLY(),
-				vertexTag,
-				stringTag);
+		// Graph<Vertex, String> graph = Graph.apply(
+		// vertexRDD.rdd(),
+		// edgeRDD.rdd(),
+		// new Vertex("name", "surname"),
+		// StorageLevel.MEMORY_ONLY(),
+		// StorageLevel.MEMORY_ONLY(),
+		// vertexTag,
+		// stringTag);
 
 		// graph.vertices().toJavaRDD().coalesce(1).saveAsTextFile("/home/vertices");
 		// // graph.edges().toJavaRDD().coalesce(1).saveAsTextFile("/home/edges");
 
-		graph.vertices().toJavaRDD().map(x -> x._2()).saveAsTextFile("/home/vertices");
-		graph.edges().toJavaRDD().map(x -> x.srcId() + "--;--" + x.dstId() + "--;--" +
-				x.attr())
-				.saveAsTextFile("/home/edges");
+		// graph.vertices().toJavaRDD().map(x ->
+		// x._2()).saveAsTextFile("/home/vertices");
+		// graph.edges().toJavaRDD().map(x -> x.srcId() + "--;--" + x.dstId() + "--;--"
+		// +
+		// x.attr())
+		// .saveAsTextFile("/home/edges");
 
-		//////////////////// Load \\\\\\\\\\\\\\\\\\\\
+		// //////////////////// Load \\\\\\\\\\\\\\\\\\\\
 
-		JavaRDD<Tuple2<Object, Vertex>> vert = sc.textFile("/home/vertices").map(
-				new Function<String, Tuple2<Object, Vertex>>() {
-					public Tuple2<Object, Vertex> call(String line) throws Exception {
-						String[] attributes = line.split("--;--");
+		// JavaRDD<Tuple2<Object, Vertex>> vert = sc.textFile("/home/vertices").map(
+		// new Function<String, Tuple2<Object, Vertex>>() {
+		// public Tuple2<Object, Vertex> call(String line) throws Exception {
+		// String[] attributes = line.split("--;--");
 
-						Vertex v = new Vertex(Long.parseLong(attributes[0]),
-								attributes[1],
-								attributes[2]);
-						return new Tuple2<>(v.getId(), v);
-					}
-				});
+		// Vertex v = new Vertex(Long.parseLong(attributes[0]),
+		// attributes[1],
+		// attributes[2]);
+		// return new Tuple2<>(v.getId(), v);
+		// }
+		// });
 
-		JavaRDD<Edge<String>> edges = sc.textFile("/home/edges").map(
-				new Function<String, Edge<String>>() {
-					public Edge<String> call(String line) throws Exception {
-						String[] att = line.split("--;--");
-						return new Edge<>(Long.parseLong(att[0]), Long.parseLong(att[1]), att[2]);
-					}
-				});
+		// JavaRDD<Edge<String>> edges = sc.textFile("/home/edges").map(
+		// new Function<String, Edge<String>>() {
+		// public Edge<String> call(String line) throws Exception {
+		// String[] att = line.split("--;--");
+		// return new Edge<>(Long.parseLong(att[0]), Long.parseLong(att[1]), att[2]);
+		// }
+		// });
 
-		ClassTag<Vertex> vertexTag2 = scala.reflect.ClassTag$.MODULE$.apply(Vertex.class);
-		ClassTag<String> stringTag2 = scala.reflect.ClassTag$.MODULE$.apply(String.class);
+		// ClassTag<Vertex> vertexTag2 =
+		// scala.reflect.ClassTag$.MODULE$.apply(Vertex.class);
+		// ClassTag<String> stringTag2 =
+		// scala.reflect.ClassTag$.MODULE$.apply(String.class);
 
-		Graph<Vertex, String> graph2 = Graph.apply(
-				vert.rdd(),
-				edges.rdd(),
-				new Vertex("name", "surname"),
-				StorageLevel.MEMORY_ONLY(),
-				StorageLevel.MEMORY_ONLY(),
-				vertexTag2,
-				stringTag2);
+		// Graph<Vertex, String> graph2 = Graph.apply(
+		// vert.rdd(),
+		// edges.rdd(),
+		// new Vertex("name", "surname"),
+		// StorageLevel.MEMORY_ONLY(),
+		// StorageLevel.MEMORY_ONLY(),
+		// vertexTag2,
+		// stringTag2);
 
-		graph2.vertices().toJavaRDD().map(x -> x._2()).saveAsTextFile("/home/2/vertices");
-		graph2.edges().toJavaRDD().map(x -> x.srcId() + "--;--" + x.dstId() + "--;--" +
-				x.attr())
-				.saveAsTextFile("/home/2/edges");
+		// graph2.vertices().toJavaRDD().map(x ->
+		// x._2()).saveAsTextFile("/home/2/vertices");
+		// graph2.edges().toJavaRDD().map(x -> x.srcId() + "--;--" + x.dstId() + "--;--"
+		// +
+		// x.attr())
+		// .saveAsTextFile("/home/2/edges");
 
-		sc.close();
+		// sc.close();
+
+		Database db;
+		String dbName = "newDB";
+
+		try {
+			db = Database.create(dbName);
+		} catch (Exception e) {
+			db = Database.getInstance(dbName);
+		}
+
+		Database.closeContext();
+
 	}
 }
-
-// https://spark.apache.org/docs/1.3.1/sql-programming-guide.html

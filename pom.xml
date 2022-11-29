@@ -20,6 +20,21 @@
 	<dependencies>
 
 		<dependency>
+			<groupId>org.apache.avro</groupId>
+			<artifactId>avro-maven-plugin</artifactId>
+			<version>1.11.1</version>
+			<type>maven-plugin</type>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.apache.avro</groupId>
+			<artifactId>avro</artifactId>
+			<version>1.11.1</version>
+		</dependency>
+
+
+		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-graphx_2.13</artifactId>
 			<version>3.3.1</version>
@@ -32,12 +47,6 @@
 			<version>3.3.1</version>
 		</dependency>
 
-
-		<dependency>
-			<groupId>io.github.cdimascio</groupId>
-			<artifactId>dotenv-java</artifactId>
-			<version>2.2.4</version>
-		</dependency>
 
 		<dependency>
 			<groupId>junit</groupId>

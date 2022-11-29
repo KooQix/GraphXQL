@@ -1,6 +1,8 @@
 # Requirements
 
 -   maven cli needs to be installed
+-   Hadoop needs to be installed
+-   Spark needs to be installed
 
 # Installation
 
@@ -25,3 +27,9 @@ scp target/graphxql-1.0-SNAPSHOT.jar
 # Run
 
     $SPARK_HOME/bin/spark-submit --class dev.kooqix.App --master yarn graphxql.jar
+
+# References
+
+Apache Avro https://spark.apache.org/docs/latest/sql-data-sources-avro.html \
+Java and Avro https://avro.apache.org/docs/1.11.1/getting-started-java/
+Spark https://spark.apache.org/docs/1.3.1/sql-programming-guide.html

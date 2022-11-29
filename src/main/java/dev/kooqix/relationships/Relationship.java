@@ -1,11 +1,14 @@
 package dev.kooqix.relationships;
 
-public class Relationship {
-	private String value;
-	private String node1;
-	private String node2;
+import java.io.Serializable;
+import dev.kooqix.node.Node;
 
-	public Relationship(String value, String node1, String node2) {
+public class Relationship implements Serializable {
+	private String value;
+	private Node node1;
+	private Node node2;
+
+	public Relationship(String value, Node node1, Node node2) {
 		this.value = value;
 		this.node1 = node1;
 		this.node2 = node2;
@@ -30,28 +33,33 @@ public class Relationship {
 	/**
 	 * @return the node1
 	 */
-	public String getNode1() {
+	public Node getNode1() {
 		return node1;
 	}
 
 	/**
 	 * @param node1 the node1 to set
 	 */
-	public void setNode1(String node1) {
+	public void setNode1(Node node1) {
 		this.node1 = node1;
 	}
 
 	/**
 	 * @return the node2
 	 */
-	public String getNode2() {
+	public Node getNode2() {
 		return node2;
 	}
 
 	/**
 	 * @param node2 the node2 to set
 	 */
-	public void setNode2(String node2) {
+	public void setNode2(Node node2) {
 		this.node2 = node2;
+	}
+
+	@Override
+	public String toString() {
+		return this.node1.getUUId() + "--;--" + this.node2.getUUId() + "--;--" + this.value;
 	}
 }
