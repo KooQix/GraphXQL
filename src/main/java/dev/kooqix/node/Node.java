@@ -49,4 +49,8 @@ public class Node implements Serializable {
 		return uuid;
 	}
 
+	@Override
+	public String toString() {
+		return this.uuid + "--;--" + this.content;
+	}
 }
