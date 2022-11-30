@@ -44,7 +44,13 @@ public class NodeTypes {
 		return multiton.values();
 	}
 
-	public void addNodeType(NodeType nodetype) throws IOException {
+	/**
+	 * Create new nodetype: Create directory and add to multiton available nodetypes
+	 * for the linked database
+	 * 
+	 * @param nodetype
+	 */
+	public void addNodeType(NodeType nodetype) {
 		try {
 			Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory, nodetype.getName()), false);
 			multiton.put(nodetype.getName(), nodetype);

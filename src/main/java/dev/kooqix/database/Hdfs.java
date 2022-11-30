@@ -1,7 +1,6 @@
 package dev.kooqix.database;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -26,6 +25,10 @@ public class Hdfs {
 	private static FileSystem fs;
 
 	private static boolean init = false;
+
+	// Hide implicit public constructor
+	private Hdfs() {
+	}
 
 	private static void init() throws IOException {
 		if (!init) {
@@ -133,7 +136,6 @@ public class Hdfs {
 				new OutputStreamWriter(fsDataOutputStream, StandardCharsets.UTF_8))) {
 			bufferedWriter.write(content);
 			bufferedWriter.newLine();
-			bufferedWriter.close();
 		}
 		close();
 	}
