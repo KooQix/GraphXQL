@@ -1,4 +1,5 @@
 /Users/kooqix/Documents/Cours/IIT_-_Master_AI/Lessons/Semester_1/Big Data/Assignments/project/project/GraphXQL/src/main/java/dev/kooqix/database/Hdfs.java
+/Users/kooqix/Documents/Cours/IIT_-_Master_AI/Lessons/Semester_1/Big Data/Assignments/project/project/GraphXQL/src/main/java/dev/kooqix/exceptions/NodeTypeExistsException.java
 /Users/kooqix/Documents/Cours/IIT_-_Master_AI/Lessons/Semester_1/Big Data/Assignments/project/project/GraphXQL/src/main/java/dev/kooqix/node/Node.java
 /Users/kooqix/Documents/Cours/IIT_-_Master_AI/Lessons/Semester_1/Big Data/Assignments/project/project/GraphXQL/src/main/java/dev/kooqix/exceptions/DatabaseExistsException.java
 /Users/kooqix/Documents/Cours/IIT_-_Master_AI/Lessons/Semester_1/Big Data/Assignments/project/project/GraphXQL/src/main/java/dev/kooqix/exceptions/NoSuchDatabaseException.java

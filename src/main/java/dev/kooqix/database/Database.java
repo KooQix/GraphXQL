@@ -1,6 +1,5 @@
 package dev.kooqix.database;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.MessageFormat;
@@ -53,6 +52,7 @@ public class Database implements Serializable {
 	//////////////////// Attributes \\\\\\\\\\\\\\\\\\\\
 
 	private String dir;
+	private String dirNodetypes;
 	private String name;
 	private NodeTypes nodetypes;
 	private Graph<Node, Relationship> graph;
@@ -61,8 +61,11 @@ public class Database implements Serializable {
 	private static ClassTag<Relationship> edgesTag = scala.reflect.ClassTag$.MODULE$.apply(Relationship.class);
 
 	// Open databases (multiton, 1 singleton per database to ensure consistency)
-	private static Map<String, Database> db = new HashMap<String, Database>();
+	private static Map<String, Database> db = new HashMap<>();
 
+	/**
+	 * Get Spark configuration variables
+	 */
 	private static void initConf() {
 		if (!confInit) {
 			GRAPHXQL_HOME = conf.get("spark.yarn.appMasterEnv.GRAPHXQL_HOME");
@@ -114,8 +117,21 @@ public class Database implements Serializable {
 
 	}
 
-	private JavaRDD<Tuple2<Object, Node>> loadVertices(NodeType nodetype) {
-		return sc.textFile(MessageFormat.format("{0}/vertices", this.dir)).map(
+	/**
+	 * Load vertices from file
+	 * 
+	 * @param nodetype
+	 * @return
+	 * @throws IOException
+	 * @throws IllegalArgumentException
+	 */
+	private JavaRDD<Tuple2<Object, Node>> loadVertices(NodeType nodetype) throws IllegalArgumentException, IOException {
+		String dir = MessageFormat.format("{0}/{1}/vertices", this.dirNodetypes,
+				nodetype.getName());
+		if (!Hdfs.fileExists(dir))
+			return sc.emptyRDD();
+
+		return sc.textFile(dir).map(
 				new Function<String, Tuple2<Object, Node>>() {
 					public Tuple2<Object, Node> call(String line) throws Exception {
 						// uuid, content
@@ -128,8 +144,21 @@ public class Database implements Serializable {
 				});
 	}
 
-	private JavaRDD<Edge<Relationship>> loadEdges(JavaRDD<Tuple2<Object, Node>> vertices) {
-		return sc.textFile(MessageFormat.format("{0}/edges", this.dir)).map(
+	/**
+	 * Load edges from file
+	 * 
+	 * @param vertices
+	 * @return
+	 * @throws IOException
+	 * @throws IllegalArgumentException
+	 */
+	private JavaRDD<Edge<Relationship>> loadEdges(JavaRDD<Tuple2<Object, Node>> vertices)
+			throws IllegalArgumentException, IOException {
+		String dir = MessageFormat.format("{0}/edges", this.dir);
+		if (!Hdfs.fileExists(dir))
+			return sc.emptyRDD();
+
+		return sc.textFile(dir).map(
 				new Function<String, Edge<Relationship>>() {
 					public Edge<Relationship> call(String line) throws Exception {
 						// att: srcId, destId, value
@@ -239,18 +268,20 @@ public class Database implements Serializable {
 	}
 
 	public void save() throws IOException {
-		Hdfs.delete(MessageFormat.format("{0}/graphVertices",
-				this.dir), true);
+		String nodetypeName = this.nodetypes.getAll().iterator().next().getName();
 
-		Hdfs.delete(MessageFormat.format("{0}/graphEdges",
+		Hdfs.delete(MessageFormat.format("{0}/{1}/vertices",
+				this.dirNodetypes, nodetypeName), true);
+
+		Hdfs.delete(MessageFormat.format("{0}/edges",
 				this.dir), true);
 
 		this.graph.vertices().toJavaRDD().flatMap(x -> Arrays.asList(x._2()).iterator())
-				.saveAsTextFile(MessageFormat.format("{0}/graphVertices",
-						this.dir));
+				.saveAsTextFile(MessageFormat.format("{0}/{1}/vertices",
+						this.dirNodetypes, nodetypeName));
 
 		this.graph.edges().toJavaRDD().flatMap(x -> Arrays.asList(x.attr).iterator())
-				.saveAsTextFile(MessageFormat.format("{0}/graphEdges",
+				.saveAsTextFile(MessageFormat.format("{0}/edges",
 						this.dir));
 
 	}
@@ -327,6 +358,7 @@ public class Database implements Serializable {
 	private void setName(String name) {
 		this.name = name.toLowerCase();
 		this.dir = MessageFormat.format("{0}/{1}", DIR_DATABASES, this.name);
+		this.dirNodetypes = MessageFormat.format("{0}/{1}", this.dir, NODETYPES_DIRECTORY_NAME);
 	}
 
 	/**

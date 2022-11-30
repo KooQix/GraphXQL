@@ -17,7 +17,7 @@ inside root dir (where pom.xml is)
 
     mvn package
 
-scp target/graphxql-1.0-SNAPSHOT.jar
+    scp target/graphxql-1.0-SNAPSHOT.jar hadoop@cluster:~/graphxql.jar
 
 # Configuration
 

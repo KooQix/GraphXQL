@@ -15,7 +15,7 @@ public class NodeType implements Serializable {
 	private String name;
 
 	public NodeType(String name) {
-		this.name = name;
+		this.name = name.toLowerCase();
 	}
 
 	/**

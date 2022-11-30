@@ -18,6 +18,8 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 
+import dev.kooqix.exceptions.NodeTypeExistsException;
+
 public class Hdfs {
 	private static Configuration conf = new Configuration();
 
@@ -88,8 +90,7 @@ public class Hdfs {
 	 */
 	public static boolean fileExists(String filename) throws IllegalArgumentException, IOException {
 		init();
-		boolean res = fs.exists(new Path(filename));
-		return res;
+		return fs.exists(new Path(filename));
 	}
 
 	/**
@@ -98,8 +99,10 @@ public class Hdfs {
 	 * @param directoryName
 	 * @param replace       Whether to replace the existing one (if already one)
 	 * @throws IOException
+	 * @throws NodeTypeExistsException
 	 */
-	public static void createDirectory(String directoryName, boolean replace) throws IOException {
+	public static void createDirectory(String directoryName, boolean replace)
+			throws IOException, NodeTypeExistsException {
 		init();
 		Path path = new Path(directoryName);
 
@@ -109,7 +112,7 @@ public class Hdfs {
 			if (replace)
 				fs.mkdirs(path);
 			else
-				throw new IOException("Directory already exists: " + directoryName);
+				throw new NodeTypeExistsException(directoryName);
 		}
 		close();
 	}
@@ -150,7 +153,6 @@ public class Hdfs {
 				new OutputStreamWriter(fsDataOutputStream, StandardCharsets.UTF_8))) {
 			bufferedWriter.write(content);
 			bufferedWriter.newLine();
-			bufferedWriter.close();
 		}
 		close();
 	}
@@ -180,6 +182,26 @@ public class Hdfs {
 		init();
 		Path file = new Path(filename);
 		fs.delete(file, recursive);
+		close();
+	}
+
+	/**
+	 * Delete all files and directories (recursively), without deleting the given
+	 * directory
+	 * 
+	 * @param directory
+	 * @throws IOException
+	 */
+	public static void deleteUnder(String directory) throws IOException {
+		Path path;
+
+		List<String> files = listDirectories(directory);
+
+		init();
+		for (String file : files) {
+			path = new Path(file);
+			fs.delete(path, true);
+		}
 		close();
 	}
 

@@ -2,11 +2,13 @@ package dev.kooqix.database;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dev.kooqix.exceptions.NodeTypeExistsException;
 import dev.kooqix.node.NodeType;
 
 public class NodeTypes {
@@ -40,5 +42,16 @@ public class NodeTypes {
 
 	public Collection<NodeType> getAll() {
 		return multiton.values();
+	}
+
+	public void addNodeType(NodeType nodetype) throws IOException {
+		try {
+			Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory, nodetype.getName()), false);
+			multiton.put(nodetype.getName(), nodetype);
+		} catch (NodeTypeExistsException e) {
+			multiton.put(nodetype.getName(), nodetype);
+		} catch (Exception e) {
+
+		}
 	}
 }

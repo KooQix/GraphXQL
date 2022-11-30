@@ -31,21 +31,22 @@ public class App {
 		}
 
 		// Create nodetype
-		NodeType user = new NodeType("User");
+		// NodeType user = new NodeType("User");
+		// db.getNodetypes().addNodeType(user);
 
-		// Create nodes
-		Node user1 = new Node(user, "name_user_1");
-		Node user2 = new Node(user, "name_user_2");
-		List<Node> nodes = new ArrayList<>();
-		nodes.add(user1);
-		nodes.add(user2);
+		// // Create nodes
+		// Node user1 = new Node(user, "name_user_1");
+		// Node user2 = new Node(user, "name_user_2");
+		// List<Node> nodes = new ArrayList<>();
+		// nodes.add(user1);
+		// nodes.add(user2);
 
-		// Add nodes to graph
-		db.addNodes(nodes);
+		// // Add nodes to graph
+		// db.addNodes(nodes);
 
-		// Add relationship
-		Relationship rel1 = new Relationship("Friends", user1, user2);
-		db.addRelationship(rel1);
+		// // Add relationship
+		// Relationship rel1 = new Relationship("Friends", user1, user2);
+		// db.addRelationship(rel1);
 
 		db.save();
 
