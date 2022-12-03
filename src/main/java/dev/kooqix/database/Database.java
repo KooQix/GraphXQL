@@ -9,14 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.graphx.Edge;
 import org.apache.spark.graphx.Graph;
-import org.apache.spark.sql.Dataset;
 import org.apache.spark.storage.StorageLevel;
 
 import com.esotericsoftware.minlog.Log;
@@ -32,6 +30,7 @@ import scala.reflect.ClassTag;
 public class Database implements Serializable {
 
 	private static final String APP_NAME = "GraphXQL";
+	private static String SEPARATOR = "--;--";
 
 	//////////////////// Configuration variables \\\\\\\\\\\\\\\\\\\\
 
@@ -140,7 +139,7 @@ public class Database implements Serializable {
 	// new Function<String, Tuple2<Object, Node>>() {
 	// public Tuple2<Object, Node> call(String line) throws Exception {
 	// // uuid, content
-	// String[] attributes = line.split("--;--");
+	// String[] attributes = line.split(SEPARATOR);
 
 	// Node node = new Node(nodetype, Long.parseLong(attributes[0]), attributes[1]);
 
@@ -167,7 +166,7 @@ public class Database implements Serializable {
 				new Function<String, Edge<Relationship>>() {
 					public Edge<Relationship> call(String line) throws Exception {
 						// att: srcId, destId, value
-						String[] att = line.split("--;--");
+						String[] att = line.split(SEPARATOR);
 
 						Long srcId = Long.parseLong(att[0]);
 						Long destId = Long.parseLong(att[1]);
@@ -287,8 +286,6 @@ public class Database implements Serializable {
 
 		//////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
 
-		this.nodetypes.openAll();
-
 		// for (Node node : this.graph.vertices().toJavaRDD().flatMap(x ->
 		// Arrays.asList(x._2()).iterator()).collect()) {
 		// node.getNodetype().getDataFileWriter().append((GenericRecord) node);
@@ -298,8 +295,6 @@ public class Database implements Serializable {
 		// .flatMap(x -> Arrays.asList(x._2()).iterator())
 		// .foreach(node ->
 		// node.getNodetype().getDataFileWriter().append((GenericRecord) node));
-
-		this.nodetypes.closeAll();
 
 		//////////////////// Save relationships \\\\\\\\\\\\\\\\\\\\
 

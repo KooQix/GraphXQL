@@ -4,7 +4,6 @@ import com.esotericsoftware.minlog.Log;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -16,8 +15,6 @@ public class NodeTypes {
 	private Database database;
 
 	private String directory;
-
-	private static String EXTENSION = "avro";
 
 	private Map<String, NodeType> multiton = null;
 
@@ -66,15 +63,5 @@ public class NodeTypes {
 		} catch (Exception e) {
 
 		}
-	}
-
-	protected void openAll() throws IOException {
-		for (NodeType nodetype : this.multiton.values())
-			nodetype.open();
-	}
-
-	protected void closeAll() throws IOException {
-		for (NodeType nodetype : this.multiton.values())
-			nodetype.close();
 	}
 }

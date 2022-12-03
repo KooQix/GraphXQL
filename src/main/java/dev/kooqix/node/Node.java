@@ -3,15 +3,16 @@ package dev.kooqix.node;
 import java.io.Serializable;
 import java.util.UUID;
 
-import org.apache.avro.generic.GenericRecord;
+import java.util.HashSet;
 
-import dev.kooqix.avro.GenericData2;
 import dev.kooqix.database.NodeType;
 
 public class Node implements Serializable {
+	private static String SEPARATOR = "--;--";
+
 	private NodeType nodetype;
 	private Long uuid;
-	private GenericRecord record;
+	private HashSet<Field> fields;
 
 	/**
 	 * Load node from file
@@ -24,7 +25,7 @@ public class Node implements Serializable {
 		this.nodetype = nodetype;
 		this.uuid = uuid;
 
-		this.record = new GenericData2.Record(this.nodetype.getSchema());
+		this.fields = new HashSet<>();
 	}
 
 	/**
@@ -36,13 +37,14 @@ public class Node implements Serializable {
 	public Node(NodeType nodetype) {
 		this.nodetype = nodetype;
 		this.uuid = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-
-		this.record = new GenericData2.Record(this.nodetype.getSchema());
-		this.record.put("uuid", this.uuid);
 	}
 
-	public void set(String key, Object value) {
-		this.record.put(key, value);
+	public <T extends Serializable> void addField(Field<T> field) {
+		this.fields.add(field);
+	}
+
+	public void setFields(HashSet<Field> fields) {
+		this.fields = fields;
 	}
 
 	/**
@@ -61,6 +63,12 @@ public class Node implements Serializable {
 
 	@Override
 	public String toString() {
-		return this.record.toString();
+		String content = "";
+
+		for (Field field : fields) {
+			content += SEPARATOR + (String) field.getValue();
+		}
+
+		return this.uuid + content;
 	}
 }
