@@ -1,0 +1,10 @@
+{
+	"namespace": "user.avro",
+	"type": "record",
+	"name": "User",
+	"fields": [
+		{ "name": "uuid", "type": "long" },
+		{ "name": "name", "type": "string" },
+		{ "name": "favorite_number", "type": ["int", "null"] }
+	]
+}

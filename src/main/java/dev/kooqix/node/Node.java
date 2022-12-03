@@ -1,39 +1,49 @@
 package dev.kooqix.node;
 
 import java.io.Serializable;
-import java.util.Map;
 import java.util.UUID;
+
+import org.apache.avro.generic.GenericRecord;
+
+import dev.kooqix.avro.GenericData2;
+import dev.kooqix.database.NodeType;
 
 public class Node implements Serializable {
 	private NodeType nodetype;
 	private Long uuid;
-	// private Map<String, Object> content;
-	private String content;
+	private GenericRecord record;
 
-	// public Node(NodeType nodetype, String uuid, Map<String, Object> content) {
-	// this.nodetype = nodetype;
-	// this.uuid = uuid;
-	// this.content = content;
-	// }
-
-	public Node(NodeType nodetype, Long uuid, String content) {
+	/**
+	 * Load node from file
+	 * 
+	 * @param nodetype
+	 * @param uuid
+	 * @param content
+	 */
+	protected Node(NodeType nodetype, Long uuid) {
 		this.nodetype = nodetype;
 		this.uuid = uuid;
-		this.content = content;
-	}
 
-	public Node(NodeType nodetype, String content) {
-		this.nodetype = nodetype;
-		this.content = content;
-		this.uuid = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+		this.record = new GenericData2.Record(this.nodetype.getSchema());
 	}
 
 	/**
-	 * @return the content
+	 * Creates new node to add
+	 * 
+	 * @param nodetype
+	 * @param content
 	 */
-	// public Map<String, Object> getContent() {
-	// return content;
-	// }
+	public Node(NodeType nodetype) {
+		this.nodetype = nodetype;
+		this.uuid = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+
+		this.record = new GenericData2.Record(this.nodetype.getSchema());
+		this.record.put("uuid", this.uuid);
+	}
+
+	public void set(String key, Object value) {
+		this.record.put(key, value);
+	}
 
 	/**
 	 * @return the nodetype
@@ -51,6 +61,6 @@ public class Node implements Serializable {
 
 	@Override
 	public String toString() {
-		return this.uuid + "--;--" + this.content;
+		return this.record.toString();
 	}
 }

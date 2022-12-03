@@ -9,6 +9,8 @@
 Create graphxql directories
 
     cd config/installation
+    sudo chmod +x graphxql-env.sh
+    ./graphxql-env.sh
     sudo chmod +x install.sh
     ./install.sh
 

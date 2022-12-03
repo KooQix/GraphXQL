@@ -1,15 +1,16 @@
 package dev.kooqix.database;
 
-import java.io.File;
+import com.esotericsoftware.minlog.Log;
+
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import dev.kooqix.exceptions.NodeTypeExistsException;
-import dev.kooqix.node.NodeType;
 
 public class NodeTypes {
 	private Database database;
@@ -31,8 +32,11 @@ public class NodeTypes {
 		String name;
 
 		for (String nodetypeFile : nodetypes) {
-			name = nodetypeFile.split(".")[0];
-			multiton.put(name, new NodeType(name));
+			name = nodetypeFile.replaceFirst(".avro", "");
+			NodeType nodetype = new NodeType(name);
+			nodetype.setPath(this.database.getDirNodetypes());
+			multiton.put(name, nodetype);
+
 		}
 	}
 
@@ -53,11 +57,24 @@ public class NodeTypes {
 	public void addNodeType(NodeType nodetype) {
 		try {
 			Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory, nodetype.getName()), false);
+
+			nodetype.setPath(this.database.getDirNodetypes());
 			multiton.put(nodetype.getName(), nodetype);
 		} catch (NodeTypeExistsException e) {
 			multiton.put(nodetype.getName(), nodetype);
+			nodetype.setPath(this.database.getDirNodetypes());
 		} catch (Exception e) {
 
 		}
+	}
+
+	protected void openAll() throws IOException {
+		for (NodeType nodetype : this.multiton.values())
+			nodetype.open();
+	}
+
+	protected void closeAll() throws IOException {
+		for (NodeType nodetype : this.multiton.values())
+			nodetype.close();
 	}
 }
