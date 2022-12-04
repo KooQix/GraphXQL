@@ -23,7 +23,6 @@ import com.esotericsoftware.minlog.Log;
 import dev.kooqix.exceptions.DatabaseExistsException;
 import dev.kooqix.exceptions.JobFailedException;
 import dev.kooqix.exceptions.NoSuchDatabaseException;
-import dev.kooqix.relationships.Relationship;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 
@@ -55,10 +54,10 @@ public class Database implements Serializable {
 	private String dirRelationships;
 	private String name;
 	private NodeTypes nodetypes;
-	private Graph<Node, Relationship> graph;
+	private Graph<Node, String> graph;
 
 	private static ClassTag<Node> vertexTag = scala.reflect.ClassTag$.MODULE$.apply(Node.class);
-	private static ClassTag<Relationship> edgesTag = scala.reflect.ClassTag$.MODULE$.apply(Relationship.class);
+	private static ClassTag<String> edgesTag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
 
 	// Open databases (multiton, 1 singleton per database to ensure consistency)
 	private static Map<String, Database> db = new HashMap<>();
@@ -96,7 +95,7 @@ public class Database implements Serializable {
 		//////////////////// Load graph \\\\\\\\\\\\\\\\\\\\
 
 		JavaRDD<Tuple2<Object, Node>> verticesRDD;
-		JavaRDD<Edge<Relationship>> edgesRDD;
+		JavaRDD<Edge<String>> edgesRDD;
 
 		if (!this.nodetypes.getAll().isEmpty()) {
 			// Load vertices for all nodetypes.... for now, the first
@@ -105,12 +104,12 @@ public class Database implements Serializable {
 			nodetype = it.next();
 
 			verticesRDD = this.loadVertices(nodetype);
-			edgesRDD = this.loadEdges(nodetype, verticesRDD);
+			edgesRDD = this.loadEdges();
 
 			while (it.hasNext()) {
 				nodetype = it.next();
 				verticesRDD.union(this.loadVertices(nodetype));
-				edgesRDD.union(this.loadEdges(nodetype, verticesRDD));
+				edgesRDD.union(this.loadEdges());
 			}
 
 		} else {
@@ -177,27 +176,25 @@ public class Database implements Serializable {
 	 * @throws IOException
 	 * @throws IllegalArgumentException
 	 */
-	private JavaRDD<Edge<Relationship>> loadEdges(NodeType nodetype, JavaRDD<Tuple2<Object, Node>> vertices)
+	private JavaRDD<Edge<String>> loadEdges()
 			throws IllegalArgumentException, IOException {
-		String dir = MessageFormat.format("{0}/{1}", this.dirRelationships, nodetype.getName());
-		if (!Hdfs.fileExists(dir))
+
+		if (!Hdfs.fileExists(this.dirRelationships))
 			return sc.emptyRDD();
 
-		return sc.textFile(dir).map(
-				new Function<String, Edge<Relationship>>() {
-					public Edge<Relationship> call(String line) throws Exception {
+		return sc.textFile(this.dirRelationships).map(
+				new Function<String, Edge<String>>() {
+					public Edge<String> call(String line) throws Exception {
 						// att: srcId, destId, value
 						String[] att = line.split(SEPARATOR);
 
 						Long srcId = Long.parseLong(att[0]);
 						Long destId = Long.parseLong(att[1]);
 
-						Relationship rel = new Relationship(
-								att[2],
-								vertices.filter(v -> v._1().toString().equals(srcId.toString())).first()._2(),
-								vertices.filter(v -> v._1().toString().equals(destId.toString())).first()._2());
-
-						return new Edge<>(srcId, destId, rel);
+						return new Edge<>(
+								srcId,
+								destId,
+								att[2]);
 					}
 				});
 	}
@@ -299,7 +296,7 @@ public class Database implements Serializable {
 	public void save() throws IOException {
 		try {
 			Hdfs.deleteUnder(this.dirNodetypes);
-			Hdfs.deleteUnder(this.dirRelationships);
+			Hdfs.delete(this.dirRelationships, true);
 		} catch (Exception e) {
 		}
 
@@ -314,13 +311,12 @@ public class Database implements Serializable {
 							.flatMap(x -> Arrays.asList(x._2()).iterator())
 							.saveAsTextFile(MessageFormat.format("{0}/{1}",
 									this.dirNodetypes, type.getName()));
-
-					this.graph.edges().toJavaRDD()
-							.filter(edge -> edge.attr.getNode1().getNodetype().equals(type))
-							.flatMap(x -> Arrays.asList(x.attr).iterator())
-							.saveAsTextFile(MessageFormat.format("{0}/{1}/{2}",
-									this.dir, RELATIONSHIPS_DIRECTORY_NAME, type.getName()));
 				});
+
+		this.graph.edges().toJavaRDD()
+				.map(Database::relationshipToString)
+				.saveAsTextFile(MessageFormat.format("{0}/{1}",
+						this.dir, RELATIONSHIPS_DIRECTORY_NAME));
 
 	}
 
@@ -357,13 +353,10 @@ public class Database implements Serializable {
 
 	}
 
-	public void addRelationship(Relationship relationship) {
-		List<Edge<Relationship>> list = new ArrayList<>();
-		list.add(new Edge<>(relationship.getNode1().getUUId(), relationship.getNode2().getUUId(), relationship));
-
+	public void addRelationship(Edge<String> relationship) {
 		this.graph = Graph.apply(
 				this.graph.vertices().toJavaRDD().rdd(),
-				this.graph.edges().toJavaRDD().union(sc.parallelize(list)).rdd(),
+				this.graph.edges().toJavaRDD().union(sc.parallelize(Arrays.asList(relationship))).rdd(),
 				null,
 				StorageLevel.MEMORY_AND_DISK(),
 				StorageLevel.MEMORY_AND_DISK(),
@@ -371,14 +364,10 @@ public class Database implements Serializable {
 				edgesTag);
 	}
 
-	public void addRelationships(List<Relationship> relationships) {
-		List<Edge<Relationship>> list = new ArrayList<>();
-		for (Relationship relationship : relationships)
-			list.add(new Edge<>(relationship.getNode1().getUUId(), relationship.getNode2().getUUId(), relationship));
-
+	public void addRelationships(List<Edge<String>> relationships) {
 		this.graph = Graph.apply(
 				this.graph.vertices().toJavaRDD().rdd(),
-				this.graph.edges().toJavaRDD().union(sc.parallelize(list)).rdd(),
+				this.graph.edges().toJavaRDD().union(sc.parallelize(relationships)).rdd(),
 				null,
 				StorageLevel.MEMORY_AND_DISK(),
 				StorageLevel.MEMORY_AND_DISK(),
@@ -421,7 +410,7 @@ public class Database implements Serializable {
 	/**
 	 * @return the graph
 	 */
-	public Graph<Node, Relationship> getGraph() {
+	public Graph<Node, String> getGraph() {
 		return graph;
 	}
 
@@ -448,5 +437,9 @@ public class Database implements Serializable {
 	@Override
 	public String toString() {
 		return MessageFormat.format("{0}\n\t{1} nodetypes", this.name.toUpperCase(), this.nodetypes.getAll().size());
+	}
+
+	private static String relationshipToString(Edge<String> relationship) {
+		return relationship.srcId() + SEPARATOR + relationship.dstId() + SEPARATOR + relationship.attr;
 	}
 }

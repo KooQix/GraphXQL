@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.spark.graphx.Edge;
+
 import com.esotericsoftware.minlog.Log;
 
 import dev.kooqix.exceptions.NoSuchDatabaseException;
@@ -11,7 +13,7 @@ import dev.kooqix.graphxql.Database;
 import dev.kooqix.graphxql.Field;
 import dev.kooqix.graphxql.Node;
 import dev.kooqix.graphxql.NodeType;
-import dev.kooqix.relationships.Relationship;
+import scala.Tuple2;
 
 /**
  * Hello world!
@@ -53,10 +55,22 @@ public class App {
 		// db.addNodes(nodes);
 
 		// // Add relationship
-		// Relationship rel1 = new Relationship("Friends", user1, user2);
+		// Relationship rel1 = new Relationship(user1.getUUId(), user2.getUUId(),
+		// "Friends");
 		// db.addRelationship(rel1);
 
-		db.save();
+		// db.save();
+
+		Log.info("\n\nVertices:");
+		List<Node> nodes = db.getGraph().vertices().toJavaRDD().map(x -> x._2()).collect();
+		for (Node node : nodes)
+			Log.info(node.toString());
+
+		Log.info("\n\nEdges:");
+		List<Edge<String>> relationships = db.getGraph().edges().toJavaRDD().map(x -> x).collect();
+
+		for (Edge<String> relationship : relationships)
+			Log.info(relationship.toString());
 
 		db.closeContext();
 		Log.info("Done!");
