@@ -200,13 +200,11 @@ public class Hdfs {
 	public static void deleteUnder(String directory) throws IOException {
 		Path path;
 
-		List<String> files = listFiles(directory);
-
-		Log.info("\n\n\n" + directory + "\n" + files.toString());
+		List<String> files = listDirectories(directory);
 
 		init();
 		for (String file : files) {
-			path = new Path(file);
+			path = new Path(directory + "/" + file);
 			fs.delete(path, true);
 		}
 		close();

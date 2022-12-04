@@ -5,6 +5,8 @@ import java.io.Serializable;
 import dev.kooqix.graphxql.Node;
 
 public class Relationship implements Serializable {
+	private static String SEPARATOR = "--;--";
+
 	private String value;
 	private Node node1;
 	private Node node2;
@@ -61,6 +63,6 @@ public class Relationship implements Serializable {
 
 	@Override
 	public String toString() {
-		return this.node1.getUUId() + "--;--" + this.node2.getUUId() + "--;--" + this.value;
+		return this.node1.getUUId() + SEPARATOR + this.node2.getUUId() + SEPARATOR + this.value;
 	}
 }

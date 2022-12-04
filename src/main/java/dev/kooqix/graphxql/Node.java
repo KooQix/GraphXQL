@@ -84,7 +84,7 @@ public class Node implements Serializable {
 		String content = "";
 
 		for (Field field : fields) {
-			content += SEPARATOR + (String) field.getValue();
+			content += SEPARATOR + field.toString();
 		}
 
 		return this.uuid + content;

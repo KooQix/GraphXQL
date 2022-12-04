@@ -37,7 +37,6 @@ public class Database implements Serializable {
 	private static String GRAPHXQL_HOME;
 
 	private static final String RELATIONSHIPS_DIRECTORY_NAME = "relationships";
-	private static final String RELATIONSHIPS_FILE = "relationships.parquet";
 	private static final String NODETYPES_DIRECTORY_NAME = "nodetypes";
 
 	private static String DIR_DATABASES;
@@ -45,7 +44,6 @@ public class Database implements Serializable {
 	//////////////////// Spark context \\\\\\\\\\\\\\\\\\\\
 
 	private static final SparkConf conf = new SparkConf().setAppName(APP_NAME);
-	// private JavaSparkContext sc;
 	private static JavaSparkContext sc;
 
 	private static boolean confInit = false;
@@ -54,6 +52,7 @@ public class Database implements Serializable {
 
 	private String dir;
 	private String dirNodetypes;
+	private String dirRelationships;
 	private String name;
 	private NodeTypes nodetypes;
 	private Graph<Node, Relationship> graph;
@@ -69,6 +68,7 @@ public class Database implements Serializable {
 	 */
 	private static void initConf() {
 		if (!confInit) {
+			sc = new JavaSparkContext(conf);
 			GRAPHXQL_HOME = conf.get("spark.yarn.appMasterEnv.GRAPHXQL_HOME");
 			DIR_DATABASES = MessageFormat.format("{0}/databases",
 					GRAPHXQL_HOME);
@@ -84,7 +84,6 @@ public class Database implements Serializable {
 	 * @throws IOException
 	 */
 	private Database(String name) throws IOException {
-		sc = new JavaSparkContext(conf);
 		initConf();
 
 		this.setName(name);
@@ -101,12 +100,19 @@ public class Database implements Serializable {
 
 		if (!this.nodetypes.getAll().isEmpty()) {
 			// Load vertices for all nodetypes.... for now, the first
+			NodeType nodetype;
 			Iterator<NodeType> it = this.nodetypes.getAll().iterator();
-			verticesRDD = this.loadVertices(it.next());
-			while (it.hasNext())
-				verticesRDD.union(this.loadVertices(it.next()));
+			nodetype = it.next();
 
-			edgesRDD = this.loadEdges(verticesRDD);
+			verticesRDD = this.loadVertices(nodetype);
+			edgesRDD = this.loadEdges(nodetype, verticesRDD);
+
+			while (it.hasNext()) {
+				nodetype = it.next();
+				verticesRDD.union(this.loadVertices(nodetype));
+				edgesRDD.union(this.loadEdges(nodetype, verticesRDD));
+			}
+
 		} else {
 			verticesRDD = sc.emptyRDD();
 			edgesRDD = sc.emptyRDD();
@@ -171,9 +177,9 @@ public class Database implements Serializable {
 	 * @throws IOException
 	 * @throws IllegalArgumentException
 	 */
-	private JavaRDD<Edge<Relationship>> loadEdges(JavaRDD<Tuple2<Object, Node>> vertices)
+	private JavaRDD<Edge<Relationship>> loadEdges(NodeType nodetype, JavaRDD<Tuple2<Object, Node>> vertices)
 			throws IllegalArgumentException, IOException {
-		String dir = MessageFormat.format("{0}/{1}", this.dir, RELATIONSHIPS_DIRECTORY_NAME);
+		String dir = MessageFormat.format("{0}/{1}", this.dirRelationships, nodetype.getName());
 		if (!Hdfs.fileExists(dir))
 			return sc.emptyRDD();
 
@@ -187,7 +193,7 @@ public class Database implements Serializable {
 						Long destId = Long.parseLong(att[1]);
 
 						Relationship rel = new Relationship(
-								att[3],
+								att[2],
 								vertices.filter(v -> v._1().toString().equals(srcId.toString())).first()._2(),
 								vertices.filter(v -> v._1().toString().equals(destId.toString())).first()._2());
 
@@ -291,32 +297,30 @@ public class Database implements Serializable {
 	}
 
 	public void save() throws IOException {
-		Hdfs.deleteUnder(this.dirNodetypes);
-		// Hdfs.delete(MessageFormat.format("{0}/{1}",
-		// this.dir, RELATIONSHIPS_DIRECTORY_NAME), true);
+		try {
+			Hdfs.deleteUnder(this.dirNodetypes);
+			Hdfs.deleteUnder(this.dirRelationships);
+		} catch (Exception e) {
+		}
 
-		// //////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
+		//////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
 
-		// this.nodetypes.getAll().forEach(
-		// type -> {
-		// this.graph.vertices().toJavaRDD()
-		// .filter(elem -> elem._2().getNodetype().equals(type))
-		// .flatMap(x -> Arrays.asList(x._2()).iterator())
-		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
-		// this.dirNodetypes, type.getName()));
+		Log.info("\n\n\n");
 
-		// });
+		this.nodetypes.getAll().forEach(
+				type -> {
+					this.graph.vertices().toJavaRDD()
+							.filter(elem -> elem._2().getNodetype().equals(type))
+							.flatMap(x -> Arrays.asList(x._2()).iterator())
+							.saveAsTextFile(MessageFormat.format("{0}/{1}",
+									this.dirNodetypes, type.getName()));
 
-		// this.graph.vertices().toJavaRDD().flatMap(x ->
-		// Arrays.asList(x._2()).iterator())
-		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
-		// this.dirNodetypes, nodetypeName));
-
-		//////////////////// Save relationships \\\\\\\\\\\\\\\\\\\\
-
-		// this.graph.edges().toJavaRDD().flatMap(x -> Arrays.asList(x.attr).iterator())
-		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
-		// this.dir, RELATIONSHIPS_DIRECTORY_NAME));
+					this.graph.edges().toJavaRDD()
+							.filter(edge -> edge.attr.getNode1().getNodetype().equals(type))
+							.flatMap(x -> Arrays.asList(x.attr).iterator())
+							.saveAsTextFile(MessageFormat.format("{0}/{1}/{2}",
+									this.dir, RELATIONSHIPS_DIRECTORY_NAME, type.getName()));
+				});
 
 	}
 
@@ -393,6 +397,7 @@ public class Database implements Serializable {
 		this.name = name.toLowerCase();
 		this.dir = MessageFormat.format("{0}/{1}", DIR_DATABASES, this.name);
 		this.dirNodetypes = MessageFormat.format("{0}/{1}", this.dir, NODETYPES_DIRECTORY_NAME);
+		this.dirRelationships = MessageFormat.format("{0}/{1}", this.dir, RELATIONSHIPS_DIRECTORY_NAME);
 	}
 
 	/**

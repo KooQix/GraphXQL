@@ -31,30 +31,30 @@ public class App {
 			db = Database.getInstance(dbName);
 		}
 
-		// Create nodetype
-		NodeType user = new NodeType("User");
-		db.getNodetypes().addNodeType(user);
+		// // Create nodetype
+		// NodeType user = new NodeType("User");
+		// db.getNodetypes().addNodeType(user);
 
-		// Create nodes
-		Node user1 = new Node(user);
-		Node user2 = new Node(user);
+		// // Create nodes
+		// Node user1 = new Node(user);
+		// Node user2 = new Node(user);
 
-		user1.addField(new Field<String>("name", "user1"));
-		user1.addField(new Field<Integer>("favorite_number", 1));
+		// user1.addField(new Field<String>("name", "user1"));
+		// user1.addField(new Field<Integer>("favorite_number", 1));
 
-		user2.addField(new Field<String>("name", "user2"));
-		user2.addField(new Field<Integer>("favorite_number", 2));
+		// user2.addField(new Field<String>("name", "user2"));
+		// user2.addField(new Field<Integer>("favorite_number", 2));
 
-		List<Node> nodes = new ArrayList<>();
-		nodes.add(user1);
-		nodes.add(user2);
+		// List<Node> nodes = new ArrayList<>();
+		// nodes.add(user1);
+		// nodes.add(user2);
 
-		// Add nodes to graph
-		db.addNodes(nodes);
+		// // Add nodes to graph
+		// db.addNodes(nodes);
 
-		// Add relationship
-		Relationship rel1 = new Relationship("Friends", user1, user2);
-		db.addRelationship(rel1);
+		// // Add relationship
+		// Relationship rel1 = new Relationship("Friends", user1, user2);
+		// db.addRelationship(rel1);
 
 		db.save();
 
