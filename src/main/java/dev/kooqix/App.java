@@ -6,11 +6,11 @@ import java.util.List;
 
 import com.esotericsoftware.minlog.Log;
 
-import dev.kooqix.database.Database;
-import dev.kooqix.database.NodeType;
-import dev.kooqix.exceptions.InvalidSchemaFieldException;
 import dev.kooqix.exceptions.NoSuchDatabaseException;
-import dev.kooqix.node.Node;
+import dev.kooqix.graphxql.Database;
+import dev.kooqix.graphxql.Field;
+import dev.kooqix.graphxql.Node;
+import dev.kooqix.graphxql.NodeType;
 import dev.kooqix.relationships.Relationship;
 
 /**
@@ -18,7 +18,7 @@ import dev.kooqix.relationships.Relationship;
  *
  */
 public class App {
-	public static void main(String[] args) throws NoSuchDatabaseException, IOException, InvalidSchemaFieldException {
+	public static void main(String[] args) throws NoSuchDatabaseException, IOException {
 
 		//////////////////// Test db \\\\\\\\\\\\\\\\\\\\
 
@@ -32,18 +32,18 @@ public class App {
 		}
 
 		// Create nodetype
-		NodeType user = new NodeType("User", "user.avsc");
+		NodeType user = new NodeType("User");
 		db.getNodetypes().addNodeType(user);
 
 		// Create nodes
 		Node user1 = new Node(user);
 		Node user2 = new Node(user);
 
-		user1.set("name", "user1");
-		user1.set("favorite_number", "1");
+		user1.addField(new Field<String>("name", "user1"));
+		user1.addField(new Field<Integer>("favorite_number", 1));
 
-		user2.set("name", "user2");
-		user2.set("favorite_number", "2");
+		user2.addField(new Field<String>("name", "user2"));
+		user2.addField(new Field<Integer>("favorite_number", 2));
 
 		List<Node> nodes = new ArrayList<>();
 		nodes.add(user1);

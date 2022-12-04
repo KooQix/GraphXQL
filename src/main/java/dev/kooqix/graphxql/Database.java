@@ -1,4 +1,4 @@
-package dev.kooqix.database;
+package dev.kooqix.graphxql;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -6,6 +6,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +23,6 @@ import com.esotericsoftware.minlog.Log;
 import dev.kooqix.exceptions.DatabaseExistsException;
 import dev.kooqix.exceptions.JobFailedException;
 import dev.kooqix.exceptions.NoSuchDatabaseException;
-import dev.kooqix.node.Node;
 import dev.kooqix.relationships.Relationship;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
@@ -45,7 +45,8 @@ public class Database implements Serializable {
 	//////////////////// Spark context \\\\\\\\\\\\\\\\\\\\
 
 	private static final SparkConf conf = new SparkConf().setAppName(APP_NAME);
-	private JavaSparkContext sc;
+	// private JavaSparkContext sc;
+	private static JavaSparkContext sc;
 
 	private static boolean confInit = false;
 
@@ -98,16 +99,19 @@ public class Database implements Serializable {
 		JavaRDD<Tuple2<Object, Node>> verticesRDD;
 		JavaRDD<Edge<Relationship>> edgesRDD;
 
-		// if (!this.nodetypes.getAll().isEmpty()) {
-		// // Load vertices for all nodetypes.... for now, the first
-		// verticesRDD = this.loadVertices(this.nodetypes.getAll().iterator().next());
-		// edgesRDD = this.loadEdges(verticesRDD);
-		// } else {
-		// verticesRDD = sc.emptyRDD();
-		// edgesRDD = sc.emptyRDD();
-		// }
-		verticesRDD = sc.emptyRDD();
-		edgesRDD = sc.emptyRDD();
+		if (!this.nodetypes.getAll().isEmpty()) {
+			// Load vertices for all nodetypes.... for now, the first
+			Iterator<NodeType> it = this.nodetypes.getAll().iterator();
+			verticesRDD = this.loadVertices(it.next());
+			while (it.hasNext())
+				verticesRDD.union(this.loadVertices(it.next()));
+
+			edgesRDD = this.loadEdges(verticesRDD);
+		} else {
+			verticesRDD = sc.emptyRDD();
+			edgesRDD = sc.emptyRDD();
+		}
+
 		// Load graph
 		this.graph = Graph.apply(
 				verticesRDD.rdd(),
@@ -128,25 +132,36 @@ public class Database implements Serializable {
 	 * @throws IOException
 	 * @throws IllegalArgumentException
 	 */
-	// private JavaRDD<Tuple2<Object, Node>> loadVertices(NodeType nodetype) throws
-	// IllegalArgumentException, IOException {
-	// String dir = MessageFormat.format("{0}/{1}/vertices", this.dirNodetypes,
-	// nodetype.getName());
-	// if (!Hdfs.fileExists(dir))
-	// return sc.emptyRDD();
+	private JavaRDD<Tuple2<Object, Node>> loadVertices(NodeType nodetype) throws IllegalArgumentException, IOException {
 
-	// return sc.textFile(dir).map(
-	// new Function<String, Tuple2<Object, Node>>() {
-	// public Tuple2<Object, Node> call(String line) throws Exception {
-	// // uuid, content
-	// String[] attributes = line.split(SEPARATOR);
+		String dir = MessageFormat.format("{0}/{1}", this.dirNodetypes,
+				nodetype.getName());
 
-	// Node node = new Node(nodetype, Long.parseLong(attributes[0]), attributes[1]);
+		if (!Hdfs.fileExists(dir))
+			return sc.emptyRDD();
 
-	// return new Tuple2<>(node.getUUId(), node);
-	// }
-	// });
-	// }
+		return sc.textFile(dir).map(
+				new Function<String, Tuple2<Object, Node>>() {
+					public Tuple2<Object, Node> call(String line) throws Exception {
+						// uuid, fields
+						String[] attributes = line.split(SEPARATOR);
+						int i;
+						String[] field;
+
+						Node node = new Node(nodetype, Long.parseLong(attributes[0]));
+
+						for (i = 1; i < attributes.length; i++) {
+							field = attributes[i].split(Field.getSeparator());
+							try {
+								node.addField(new Field(field[0], field[1]));
+							} catch (Exception e) {
+							}
+						}
+
+						return new Tuple2<>(node.getUUId(), node);
+					}
+				});
+	}
 
 	/**
 	 * Load edges from file
@@ -158,7 +173,7 @@ public class Database implements Serializable {
 	 */
 	private JavaRDD<Edge<Relationship>> loadEdges(JavaRDD<Tuple2<Object, Node>> vertices)
 			throws IllegalArgumentException, IOException {
-		String dir = MessageFormat.format("{0}/edges", this.dir);
+		String dir = MessageFormat.format("{0}/{1}", this.dir, RELATIONSHIPS_DIRECTORY_NAME);
 		if (!Hdfs.fileExists(dir))
 			return sc.emptyRDD();
 
@@ -252,7 +267,6 @@ public class Database implements Serializable {
 	 * @throws JobFailedException
 	 */
 	public void update(String name) throws JobFailedException {
-
 		try {
 			Hdfs.renameTo(
 					this.dir,
@@ -263,6 +277,11 @@ public class Database implements Serializable {
 		}
 	}
 
+	/**
+	 * Delete database
+	 * 
+	 * @throws JobFailedException
+	 */
 	public void delete() throws JobFailedException {
 		try {
 			Hdfs.delete(this.dir, true);
@@ -272,35 +291,32 @@ public class Database implements Serializable {
 	}
 
 	public void save() throws IOException {
-		// String nodetypeName = this.nodetypes.getAll().iterator().next().getName();
-
 		Hdfs.deleteUnder(this.dirNodetypes);
+		// Hdfs.delete(MessageFormat.format("{0}/{1}",
+		// this.dir, RELATIONSHIPS_DIRECTORY_NAME), true);
 
-		Hdfs.delete(MessageFormat.format("{0}/edges",
-				this.dir), true);
+		// //////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
+
+		// this.nodetypes.getAll().forEach(
+		// type -> {
+		// this.graph.vertices().toJavaRDD()
+		// .filter(elem -> elem._2().getNodetype().equals(type))
+		// .flatMap(x -> Arrays.asList(x._2()).iterator())
+		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
+		// this.dirNodetypes, type.getName()));
+
+		// });
 
 		// this.graph.vertices().toJavaRDD().flatMap(x ->
 		// Arrays.asList(x._2()).iterator())
-		// .saveAsTextFile(MessageFormat.format("{0}/{1}/vertices",
+		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
 		// this.dirNodetypes, nodetypeName));
-
-		//////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
-
-		// for (Node node : this.graph.vertices().toJavaRDD().flatMap(x ->
-		// Arrays.asList(x._2()).iterator()).collect()) {
-		// node.getNodetype().getDataFileWriter().append((GenericRecord) node);
-		// }
-
-		// this.graph.vertices().toJavaRDD()
-		// .flatMap(x -> Arrays.asList(x._2()).iterator())
-		// .foreach(node ->
-		// node.getNodetype().getDataFileWriter().append((GenericRecord) node));
 
 		//////////////////// Save relationships \\\\\\\\\\\\\\\\\\\\
 
-		this.graph.edges().toJavaRDD().flatMap(x -> Arrays.asList(x.attr).iterator())
-				.saveAsTextFile(MessageFormat.format("{0}/edges",
-						this.dir));
+		// this.graph.edges().toJavaRDD().flatMap(x -> Arrays.asList(x.attr).iterator())
+		// .saveAsTextFile(MessageFormat.format("{0}/{1}",
+		// this.dir, RELATIONSHIPS_DIRECTORY_NAME));
 
 	}
 

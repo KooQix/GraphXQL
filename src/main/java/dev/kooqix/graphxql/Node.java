@@ -1,11 +1,9 @@
-package dev.kooqix.node;
+package dev.kooqix.graphxql;
 
 import java.io.Serializable;
 import java.util.UUID;
-
 import java.util.HashSet;
-
-import dev.kooqix.database.NodeType;
+import java.util.Iterator;
 
 public class Node implements Serializable {
 	private static String SEPARATOR = "--;--";
@@ -37,10 +35,30 @@ public class Node implements Serializable {
 	public Node(NodeType nodetype) {
 		this.nodetype = nodetype;
 		this.uuid = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+
+		this.fields = new HashSet<>();
 	}
 
 	public <T extends Serializable> void addField(Field<T> field) {
 		this.fields.add(field);
+	}
+
+	public Serializable getFieldValue(String key) throws NoSuchFieldException {
+		Iterator<Field> it = this.fields.iterator();
+		Field field;
+		while (it.hasNext()) {
+			field = it.next();
+			if (field.getKey().equals(key))
+				return field.getValue();
+		}
+		throw new NoSuchFieldException(key);
+	}
+
+	/**
+	 * @return the fields
+	 */
+	public HashSet<Field> getFields() {
+		return fields;
 	}
 
 	public void setFields(HashSet<Field> fields) {

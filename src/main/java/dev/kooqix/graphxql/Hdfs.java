@@ -1,4 +1,4 @@
-package dev.kooqix.database;
+package dev.kooqix.graphxql;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
@@ -16,6 +17,8 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
+
+import com.esotericsoftware.minlog.Log;
 
 import dev.kooqix.exceptions.NodeTypeExistsException;
 
@@ -197,7 +200,9 @@ public class Hdfs {
 	public static void deleteUnder(String directory) throws IOException {
 		Path path;
 
-		List<String> files = listDirectories(directory);
+		List<String> files = listFiles(directory);
+
+		Log.info("\n\n\n" + directory + "\n" + files.toString());
 
 		init();
 		for (String file : files) {

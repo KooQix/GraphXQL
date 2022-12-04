@@ -1,8 +1,9 @@
-package dev.kooqix.database;
+package dev.kooqix.graphxql;
 
 import com.esotericsoftware.minlog.Log;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,7 +12,7 @@ import java.util.Map;
 
 import dev.kooqix.exceptions.NodeTypeExistsException;
 
-public class NodeTypes {
+public class NodeTypes implements Serializable {
 	private Database database;
 
 	private String directory;
@@ -24,15 +25,12 @@ public class NodeTypes {
 
 		multiton = new HashMap<String, NodeType>();
 
-		List<String> nodetypes = Hdfs.listFiles(this.directory);
-
-		String name;
+		List<String> nodetypes = Hdfs.listDirectories(this.directory);
 
 		for (String nodetypeFile : nodetypes) {
-			name = nodetypeFile.replaceFirst(".avro", "");
-			NodeType nodetype = new NodeType(name);
+			NodeType nodetype = new NodeType(nodetypeFile);
 			nodetype.setPath(this.database.getDirNodetypes());
-			multiton.put(name, nodetype);
+			multiton.put(nodetypeFile, nodetype);
 
 		}
 	}
@@ -52,16 +50,19 @@ public class NodeTypes {
 	 * @param nodetype
 	 */
 	public void addNodeType(NodeType nodetype) {
-		try {
-			Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory, nodetype.getName()), false);
+		multiton.put(nodetype.getName(), nodetype);
+		nodetype.setPath(this.database.getDirNodetypes());
+		// try {
+		// Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory,
+		// nodetype.getName()), false);
 
-			nodetype.setPath(this.database.getDirNodetypes());
-			multiton.put(nodetype.getName(), nodetype);
-		} catch (NodeTypeExistsException e) {
-			multiton.put(nodetype.getName(), nodetype);
-			nodetype.setPath(this.database.getDirNodetypes());
-		} catch (Exception e) {
+		// multiton.put(nodetype.getName(), nodetype);
+		// nodetype.setPath(this.database.getDirNodetypes());
+		// } catch (NodeTypeExistsException e) {
+		// multiton.put(nodetype.getName(), nodetype);
+		// nodetype.setPath(this.database.getDirNodetypes());
+		// } catch (Exception e) {
 
-		}
+		// }
 	}
 }

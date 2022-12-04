@@ -1,7 +1,8 @@
 package dev.kooqix.relationships;
 
 import java.io.Serializable;
-import dev.kooqix.node.Node;
+
+import dev.kooqix.graphxql.Node;
 
 public class Relationship implements Serializable {
 	private String value;
