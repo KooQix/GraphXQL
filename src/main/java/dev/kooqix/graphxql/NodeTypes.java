@@ -50,19 +50,16 @@ public class NodeTypes implements Serializable {
 	 * @param nodetype
 	 */
 	public void addNodeType(NodeType nodetype) {
-		multiton.put(nodetype.getName(), nodetype);
-		nodetype.setPath(this.database.getDirNodetypes());
-		// try {
-		// Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory,
-		// nodetype.getName()), false);
+		try {
+			Hdfs.createDirectory(MessageFormat.format("{0}/{1}", directory,
+					nodetype.getName()), false);
 
-		// multiton.put(nodetype.getName(), nodetype);
-		// nodetype.setPath(this.database.getDirNodetypes());
-		// } catch (NodeTypeExistsException e) {
-		// multiton.put(nodetype.getName(), nodetype);
-		// nodetype.setPath(this.database.getDirNodetypes());
-		// } catch (Exception e) {
-
-		// }
+			multiton.put(nodetype.getName(), nodetype);
+			nodetype.setPath(this.database.getDirNodetypes());
+		} catch (NodeTypeExistsException e) {
+			multiton.put(nodetype.getName(), nodetype);
+			nodetype.setPath(this.database.getDirNodetypes());
+		} catch (Exception e) {
+		}
 	}
 }

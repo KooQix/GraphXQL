@@ -163,6 +163,20 @@ public class Hdfs {
 	}
 
 	/**
+	 * Append if file exist, else create file and write
+	 * 
+	 * @param filename
+	 * @param content
+	 * @throws IOException
+	 */
+	public static void appendOrWrite(String filename, String content) throws IOException {
+		if (fileExists(filename))
+			appendToFile(filename, content);
+		else
+			writeFile(filename, content);
+	}
+
+	/**
 	 * Copy file
 	 * 
 	 * @param srcFilename
@@ -200,7 +214,7 @@ public class Hdfs {
 	public static void deleteUnder(String directory) throws IOException {
 		Path path;
 
-		List<String> files = listDirectories(directory);
+		List<String> files = listFiles(directory);
 
 		init();
 		for (String file : files) {
