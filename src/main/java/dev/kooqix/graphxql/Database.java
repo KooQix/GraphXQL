@@ -19,11 +19,12 @@ import org.apache.spark.graphx.Graph;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.util.LongAccumulator;
 
-import com.esotericsoftware.minlog.Log;
-
 import dev.kooqix.exceptions.DatabaseExistsException;
 import dev.kooqix.exceptions.JobFailedException;
 import dev.kooqix.exceptions.NoSuchDatabaseException;
+import dev.kooqix.exceptions.NoSuchNodeException;
+import dev.kooqix.exceptions.NoSuchNodeTypeException;
+import dev.kooqix.exceptions.NoSuchRelationshipException;
 import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
@@ -35,12 +36,12 @@ public class Database implements Serializable {
 
 	//////////////////// Configuration variables \\\\\\\\\\\\\\\\\\\\
 
-	private static String GRAPHXQL_HOME;
+	private static String GRAPHXQL_HOME; // environment variable
 
 	private static final String RELATIONSHIPS_DIRECTORY_NAME = "relationships";
 	private static final String NODETYPES_DIRECTORY_NAME = "nodetypes";
 
-	private static String DIR_DATABASES;
+	private static String DIR_DATABASES; // databases directory
 
 	//////////////////// Spark context \\\\\\\\\\\\\\\\\\\\
 
@@ -51,14 +52,14 @@ public class Database implements Serializable {
 
 	//////////////////// Attributes \\\\\\\\\\\\\\\\\\\\
 
-	private String dir;
-	private String dirNodetypes;
-	private String dirRelationships;
-	private String name;
-	private NodeTypes nodetypes;
+	private String dir; // Directory of this database
+	private String dirNodetypes; // Directory of the nodetypes for this database
+	private String dirRelationships; // Directory of the relationships for this database
+	private String name; // Name of the database
+	private NodeTypes nodetypes; // Nodetypes associated with this database
 	private Graph<Node, String> graph;
 
-	private LongAccumulator acc;
+	private LongAccumulator acc; // To generate incremental UUID
 
 	private static ClassTag<Node> vertexTag = scala.reflect.ClassTag$.MODULE$.apply(Node.class);
 	private static ClassTag<String> edgesTag = scala.reflect.ClassTag$.MODULE$.apply(String.class);
@@ -67,7 +68,7 @@ public class Database implements Serializable {
 	private static Map<String, Database> db = new HashMap<>();
 
 	/**
-	 * Get Spark configuration variables
+	 * Get Spark configuration variables and init databases directory
 	 */
 	private static void initConf() {
 		if (!confInit) {
@@ -104,7 +105,6 @@ public class Database implements Serializable {
 		JavaRDD<Edge<String>> edgesRDD;
 
 		if (!this.nodetypes.getAll().isEmpty()) {
-
 			// Load vertices for all nodetypes.... for now, the first
 			NodeType nodetype;
 			Iterator<NodeType> it = this.nodetypes.getAll().iterator();
@@ -123,20 +123,13 @@ public class Database implements Serializable {
 			this.initAcc();
 
 		} else {
+			// No nodetypes yet, empty rdds
 			verticesRDD = sc.emptyRDD();
 			edgesRDD = sc.emptyRDD();
 		}
 
 		// Load graph
-		this.graph = Graph.apply(
-				verticesRDD.rdd(),
-				edgesRDD.rdd(),
-				null,
-				StorageLevel.MEMORY_AND_DISK(),
-				StorageLevel.MEMORY_AND_DISK(),
-				vertexTag,
-				edgesTag);
-
+		this.setGraph(verticesRDD, edgesRDD);
 	}
 
 	/**
@@ -172,7 +165,8 @@ public class Database implements Serializable {
 						int i;
 						String[] field;
 
-						Node node = new Node(nodetype);
+						// Create node object and add its fields
+						Node node = new Node(nodetype, Long.parseLong(attributes[0]));
 
 						for (i = 1; i < attributes.length; i++) {
 							field = attributes[i].split(Field.getSeparator());
@@ -181,7 +175,6 @@ public class Database implements Serializable {
 							} catch (Exception e) {
 							}
 						}
-						node.init(Long.parseLong(attributes[0]));
 
 						return new Tuple2<>(node.getUUID(), node);
 					}
@@ -191,7 +184,8 @@ public class Database implements Serializable {
 	/**
 	 * Load edges from file
 	 * 
-	 * @param vertices
+	 * @param filename Load only one file if filename != null, else load all under
+	 *                 the relationship directory
 	 * @return
 	 * @throws IOException
 	 * @throws IllegalArgumentException
@@ -241,7 +235,7 @@ public class Database implements Serializable {
 		String n = name.toLowerCase();
 
 		if (!db.containsKey(n)) {
-			// Db exists, add to map
+			// Db exists on disk, create object and add to map
 			if (getAll().contains(n))
 				db.put(n, new Database(n));
 			else
@@ -249,6 +243,17 @@ public class Database implements Serializable {
 		}
 
 		return db.get(n);
+	}
+
+	private void setGraph(JavaRDD<Tuple2<Object, Node>> verticesRDD, JavaRDD<Edge<String>> edgesRDD) {
+		this.graph = Graph.apply(
+				verticesRDD.rdd(),
+				edgesRDD.rdd(),
+				null,
+				StorageLevel.MEMORY_AND_DISK(),
+				StorageLevel.MEMORY_AND_DISK(),
+				vertexTag,
+				edgesTag);
 	}
 
 	//////////////////// Database operations \\\\\\\\\\\\\\\\\\\\
@@ -266,8 +271,6 @@ public class Database implements Serializable {
 
 		try {
 			String dir = MessageFormat.format("{0}/{1}", DIR_DATABASES, name.toLowerCase());
-
-			Log.info("Creating directory: " + dir);
 
 			// Create db directory
 			Hdfs.createDirectory(dir, false);
@@ -292,7 +295,7 @@ public class Database implements Serializable {
 	}
 
 	/**
-	 * Update database
+	 * Update database name
 	 * 
 	 * @param name
 	 * @throws JobFailedException
@@ -323,45 +326,6 @@ public class Database implements Serializable {
 
 	//////////////////// Graph operations \\\\\\\\\\\\\\\\\\\\
 
-	// public void save() throws IOException {
-	// Hdfs.deleteUnder(this.dirRelationships);
-
-	// //////////////////// Save nodes \\\\\\\\\\\\\\\\\\\\
-
-	// // this.nodetypes.getAll().forEach(
-	// // type -> {
-	// // try {
-	// // Hdfs.deleteUnder(this.dirNodetypes + "/" + type.getName());
-	// // } catch (Exception e) {
-	// // }
-
-	// // this.graph.vertices().toJavaRDD()
-	// // .filter(elem -> elem._2().getNodetype().equals(type))
-	// // .flatMap(x -> Arrays.asList(x._2()).iterator())
-	// // .groupBy(x -> Files.getNodeFile(x.getUUID()))
-	// // .foreach(elem -> elem._2().forEach(
-	// // node -> {
-	// // try {
-	// // Hdfs.appendOrWrite(
-	// // this.dirNodetypes + "/" + type.getName() + "/"
-	// // + elem._1(),
-	// // node.toString());
-	// // } catch (Exception e) {
-	// // }
-	// // }));
-	// // });
-
-	// this.graph.edges().toJavaRDD()
-	// .groupBy(x -> Files.getRelationFile(x.srcId()))
-	// .foreach(elem -> elem._2().forEach(rel -> {
-	// try {
-	// Hdfs.appendOrWrite(this.dirRelationships + "/" + elem._1(),
-	// relationshipToString(rel));
-	// } catch (Exception e) {
-	// }
-	// }));
-	// }
-
 	//////////////////// Nodes \\\\\\\\\\\\\\\\\\\\
 
 	/**
@@ -369,8 +333,12 @@ public class Database implements Serializable {
 	 * 
 	 * @param node
 	 * @throws IOException
+	 * @throws NoSuchNodeTypeException
 	 */
-	public void addNode(Node node) throws IOException {
+	public void addNode(Node node) throws IOException, NoSuchNodeTypeException {
+		if (!this.nodetypes.getAll().contains(node.getNodetype()))
+			throw new NoSuchNodeTypeException(node.getNodetype().getName());
+
 		// Link node to db and affect an id
 		node.init(this.incrementAcc());
 
@@ -379,16 +347,10 @@ public class Database implements Serializable {
 		appendNode(node);
 
 		// Update graph with new node
-		this.graph = Graph.apply(
+		this.setGraph(
 				this.graph.vertices().toJavaRDD()
-						.union(sc.parallelize(Arrays.asList(new Tuple2<>(node.getUUID(), node)))).rdd(),
-				this.graph.edges().toJavaRDD().rdd(),
-				null,
-				StorageLevel.MEMORY_AND_DISK(),
-				StorageLevel.MEMORY_AND_DISK(),
-				vertexTag,
-				edgesTag);
-
+						.union(sc.parallelize(Arrays.asList(new Tuple2<>(node.getUUID(), node)))),
+				this.graph.edges().toJavaRDD());
 	}
 
 	/**
@@ -407,13 +369,26 @@ public class Database implements Serializable {
 	 * id),
 	 * with modified fields
 	 * 
-	 * @param node
+	 * @param node the node to update
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchNodeException
 	 */
-	public void updateNode(Node updatedNode, long nodeUUID) throws IllegalArgumentException, IOException {
-		updatedNode.init(nodeUUID);
-		this.updateNode(updatedNode, false);
+	public void updateNode(Node node)
+			throws IllegalArgumentException, IOException, NoSuchNodeException {
+
+		if (node.getUUID() == null)
+			throw new IllegalArgumentException("Node must be added to the database before being updated");
+
+		// Update node on disk
+		this.updateNode(node, false);
+
+		// Update node on graph
+		this.setGraph(
+				this.graph.vertices().toJavaRDD()
+						.filter(v -> !v._2().equals(node))
+						.union(sc.parallelize(Arrays.asList(new Tuple2<>(node.getUUID(), node)))),
+				this.graph.edges().toJavaRDD());
 	}
 
 	/**
@@ -422,9 +397,17 @@ public class Database implements Serializable {
 	 * @param node
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchNodeException
 	 */
-	public void deleteNode(Node node) throws IllegalArgumentException, IOException {
+	public void deleteNode(Node node) throws IllegalArgumentException, IOException, NoSuchNodeException {
+		// Delete from disk
 		this.updateNode(node, true);
+
+		// Update graph without node
+		this.setGraph(
+				this.graph.vertices().toJavaRDD()
+						.filter(v -> !v._2().equals(node)),
+				this.graph.edges().toJavaRDD());
 	}
 
 	/**
@@ -434,45 +417,66 @@ public class Database implements Serializable {
 	 * @param delete
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchNodeException
 	 */
-	private void updateNode(Node node, boolean delete) throws IllegalArgumentException, IOException {
+	private void updateNode(Node node, boolean delete)
+			throws IllegalArgumentException, IOException, NoSuchNodeException {
 
 		// Get content from file where the node is stored
-		JavaRDD<Tuple2<Object, Node>> content = this.loadVertices(node.getNodetype(),
-				Files.getNodeFile(node.getUUID())).filter(x -> !(x._2().equals(node)));
-
 		String filename = this.getNodeFile(node);
+
+		String content;
+		try {
+			content = Hdfs.readFile(filename);
+		} catch (Exception e) {
+			throw new NoSuchNodeException(node.getUUID());
+		}
+
+		// Load content except the node to update / delete
+		StringBuilder newContent = new StringBuilder();
+
+		Long uuid;
+		String[] lines = content.split("\n");
+		for (int i = 0; i < lines.length; i++) {
+			uuid = Long.parseLong(lines[i].split(SEPARATOR)[0]);
+
+			if (!uuid.equals(node.getUUID())) {
+				newContent.append(lines[i]);
+				if (i != lines.length - 1)
+					newContent.append("\n");
+			}
+		}
+
+		// If update, add the new value
+		if (!delete)
+			newContent.append("\n" + node.toString());
 
 		// Remove file
 		Hdfs.delete(filename, true);
 
-		// Update the previous content with the new node value
-		if (!delete) {
-			content = content.union(sc.parallelize(Arrays.asList(new Tuple2<>(node.getUUID(), node))));
-		}
-
-		// Write the new content back
-		content.foreach(x -> Hdfs.appendOrWrite(filename, x._2().toString()));
-
+		// Write new content
+		Hdfs.writeFile(filename, newContent.toString());
 	}
-
 	//////////////////// Relationships \\\\\\\\\\\\\\\\\\\\
 
+	/**
+	 * Add a relationship between 2 nodes of the graph
+	 * 
+	 * @param relationship
+	 * @throws IOException
+	 */
 	public void addRelationship(Edge<String> relationship) throws IOException {
+		// Add relationship to disk
 		appendRelationship(relationship);
 
-		this.graph = Graph.apply(
-				this.graph.vertices().toJavaRDD().rdd(),
-				this.graph.edges().toJavaRDD().union(sc.parallelize(Arrays.asList(relationship))).rdd(),
-				null,
-				StorageLevel.MEMORY_AND_DISK(),
-				StorageLevel.MEMORY_AND_DISK(),
-				vertexTag,
-				edgesTag);
+		// Update graph with new relationship
+		this.setGraph(
+				this.graph.vertices().toJavaRDD(),
+				this.graph.edges().toJavaRDD().union(sc.parallelize(Arrays.asList(relationship))));
 	}
 
 	/**
-	 * Append a node to disk
+	 * Append a relationship to disk
 	 * 
 	 * @param node
 	 * @throws IOException
@@ -483,60 +487,107 @@ public class Database implements Serializable {
 	}
 
 	/**
-	 * Take a copy of an existing node (2 nodes are equals if they have the same
-	 * id),
-	 * with modified fields
+	 * Update a relationship
 	 *
-	 * @param node
+	 * @param relationship The relationship to update
+	 * @param newValue     The newValue of the relationship
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchRelationshipException
 	 */
 	public void updateRelationship(Edge<String> relationship, String newValue)
-			throws IllegalArgumentException, IOException {
+			throws IllegalArgumentException, IOException, NoSuchRelationshipException {
+
+		String oldValue = relationship.attr();
+
+		// Update relationship on disk (it updates the relationship.attr value with the
+		// new value)
 		this.updateRel(relationship, newValue);
+
+		// Update graph
+		this.setGraph(
+				this.graph.vertices().toJavaRDD(),
+				this.graph.edges().toJavaRDD()
+						.filter(e -> (e.srcId() != relationship.srcId())
+								|| (e.dstId() != relationship.dstId())
+								|| !e.attr().equals(oldValue))
+						.union(sc.parallelize(Arrays.asList(relationship))));
 	}
 
 	/**
-	 * Delete an existing node
+	 * Delete an existing relationship
 	 *
 	 * @param node
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchRelationshipException
 	 */
 	public void deleteRelationship(Edge<String> relationship) throws IllegalArgumentException,
-			IOException {
+			IOException, NoSuchRelationshipException {
+
+		// Delete from disk
 		this.updateRel(relationship, null);
+
+		// Delete from graph
+		this.setGraph(
+				this.graph.vertices().toJavaRDD(), this.graph.edges().toJavaRDD()
+						.filter(e -> (e.srcId() != relationship.srcId())
+								|| (e.dstId() != relationship.dstId())
+								|| !e.attr().equals(relationship.attr())));
+
 	}
 
 	/**
 	 * Update or delete a relationship from disk
 	 * 
 	 * @param relationship
-	 * @param delete
+	 * @param newValue     The new value of the relationship (if null => delete
+	 *                     relationship)
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws NoSuchRelationshipException
 	 */
 	private void updateRel(Edge<String> relationship, String newValue)
-			throws IllegalArgumentException, IOException {
+			throws IllegalArgumentException, IOException, NoSuchRelationshipException {
 
-		// Get content from file where the node is stored
-		JavaRDD<Edge<String>> content = this.loadEdges(Files.getRelationFile(relationship.srcId()))
-				.filter(x -> (x.srcId() != relationship.srcId()) || (x.dstId() != relationship.dstId()));
-
+		// Get content from file where the relationship is stored
 		String filename = this.getRelationshipFile(relationship);
+		String content;
+		try {
+			content = Hdfs.readFile(filename);
+		} catch (Exception e) {
+			throw new NoSuchRelationshipException(relationship);
+		}
+
+		// Load content except the relationship to update / delete
+		StringBuilder newContent = new StringBuilder();
+
+		Long src, dest;
+		String[] lines = content.split("\n");
+		String[] elems;
+		for (int i = 0; i < lines.length; i++) {
+			elems = lines[i].split(SEPARATOR);
+			src = Long.parseLong(elems[0]);
+			dest = Long.parseLong(elems[1]);
+
+			if (src != relationship.srcId() || dest != relationship.dstId() || !elems[2].equals(relationship.attr())) {
+				newContent.append(lines[i]);
+				if (i != lines.length - 1)
+					newContent.append("\n");
+			}
+		}
+
+		// If update, add the new value
+		if (newValue != null) {
+			relationship.attr = newValue;
+			newContent.append("\n" + relationshipToString(relationship));
+		}
 
 		// Remove file
 		Hdfs.delete(filename, true);
 
-		// Update the previous content with the new relationship value
-		if (newValue != null) {
-			content = content.union(sc.parallelize(
-					Arrays.asList(new Edge<>(relationship.srcId(), relationship.dstId(), newValue))));
-		}
-
-		// Write the new content back
-		content.foreach(x -> Hdfs.appendOrWrite(filename, relationshipToString(x)));
-
+		// Write new content
+		Hdfs.writeFile(filename, newContent.toString());
 	}
 
 	//////////////////// Getters and Setters \\\\\\\\\\\\\\\\\\\\
@@ -579,7 +630,7 @@ public class Database implements Serializable {
 	}
 
 	/**
-	 * @return the nodetypes
+	 * @return the available nodetypes of the database
 	 */
 	public NodeTypes getNodetypes() {
 		return nodetypes;
@@ -588,18 +639,32 @@ public class Database implements Serializable {
 	/**
 	 * @return the dirNodetypes
 	 */
-	public String getDirNodetypes() {
+	protected String getDirNodetypes() {
 		return dirNodetypes;
 	}
 
+	/**
+	 * Get the absolute path of the node, based on its uuid
+	 * 
+	 * @param node
+	 * @return
+	 */
 	private String getNodeFile(Node node) {
 		return this.dirNodetypes + "/" + node.getNodetype().getName() + "/"
 				+ Files.getNodeFile(node.getUUID());
 	}
 
+	/**
+	 * Get the absolute path of the relationship, base on the source Node UUID
+	 * 
+	 * @param relationship
+	 * @return
+	 */
 	private String getRelationshipFile(Edge<String> relationship) {
 		return this.dirRelationships + "/" + Files.getRelationFile(relationship.srcId());
 	}
+
+	//////////////////// Accumulator \\\\\\\\\\\\\\\\\\\\
 
 	/**
 	 * Init the accumulator with the maximum uuid
@@ -620,6 +685,7 @@ public class Database implements Serializable {
 				// in the driver's memory, hence can collect
 				Long maxID = Collections.max(loadVertices(nodetype, maxFilename).map(x -> x._2()).collect()).getUUID();
 
+				// set the accumulator value
 				if (Long.compare(maxID, this.acc.value()) > 0)
 					this.acc.setValue(maxID);
 
@@ -629,6 +695,11 @@ public class Database implements Serializable {
 		});
 	}
 
+	/**
+	 * Increment the accumulator and return its value (sum of added values)
+	 * 
+	 * @return
+	 */
 	private long incrementAcc() {
 		this.acc.add(1L);
 		return this.acc.sum();
@@ -636,15 +707,21 @@ public class Database implements Serializable {
 
 	//////////////////// Others \\\\\\\\\\\\\\\\\\\\
 
-	public void closeContext() throws IOException {
+	/**
+	 * Close spark context when done with the database
+	 * 
+	 * @throws IOException
+	 */
+	public void closeContext() {
 		sc.close();
 	}
 
-	@Override
-	public String toString() {
-		return MessageFormat.format("{0}\n\t{1} nodetypes", this.name.toUpperCase(), this.nodetypes.getAll().size());
-	}
-
+	/**
+	 * Edge<String> toString override
+	 * 
+	 * @param relationship
+	 * @return
+	 */
 	private static String relationshipToString(Edge<String> relationship) {
 		return relationship.srcId() + SEPARATOR + relationship.dstId() + SEPARATOR + relationship.attr;
 	}

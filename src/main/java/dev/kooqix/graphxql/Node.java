@@ -4,15 +4,14 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Iterator;
-
-import dev.kooqix.exceptions.InalterableNodeException;
+import java.util.Set;
 
 public class Node implements Serializable, Comparable<Node> {
 	private static String SEPARATOR = "--;--";
 
 	private NodeType nodetype;
 	private Long uuid;
-	private HashSet<Field> fields;
+	private Set<Field> fields; // Fields are key value pairs
 
 	/**
 	 * Creates new node to add
@@ -20,22 +19,83 @@ public class Node implements Serializable, Comparable<Node> {
 	 * uuid is null
 	 * 
 	 * @param nodetype
-	 * @param content
 	 */
 	public Node(NodeType nodetype) {
 		this.nodetype = nodetype;
 		this.fields = new HashSet<>();
+
+		// Not linked to database => uuid is null
 		this.uuid = null;
 	}
 
-	public <T extends Serializable> void addField(Field<T> field)
-			throws IllegalArgumentException, IOException, InalterableNodeException {
-		if (this.uuid == null)
-			this.fields.add(field);
-		else
-			throw new InalterableNodeException(this.uuid);
+	/**
+	 * Called by database when loading the node from disk
+	 * 
+	 * @param nodetype
+	 * @param uuid
+	 */
+	protected Node(NodeType nodetype, Long uuid) {
+		this.nodetype = nodetype;
+		this.fields = new HashSet<>();
+		this.uuid = uuid;
 	}
 
+	/**
+	 * Copy
+	 * 
+	 * @param nodetype
+	 * @param fields
+	 */
+	private Node(NodeType nodetype, Set<Field> fields) {
+		this.nodetype = nodetype;
+		this.fields = fields;
+		this.uuid = null;
+	}
+
+	/**
+	 * Add a field (if field already exist, the key is present, pass)
+	 * 
+	 * @param <T>
+	 * @param field
+	 * @throws IllegalArgumentException
+	 * @throws IOException
+	 */
+	public <T extends Serializable> void addField(Field<T> field)
+			throws IllegalArgumentException {
+		this.fields.add(field);
+	}
+
+	/**
+	 * Set a field value (replace if key already exist)
+	 * 
+	 * @param field
+	 */
+	public void setField(Field field) {
+		if (this.fields.contains(field))
+			this.fields.remove(field);
+
+		this.fields.add(field);
+	}
+
+	/**
+	 * Set fields (replace)
+	 * 
+	 * @param fields
+	 * @throws IllegalArgumentException
+	 * @throws IOException
+	 */
+	public void setFields(Set<Field> fields)
+			throws IllegalArgumentException {
+		this.fields = fields;
+	}
+
+	/**
+	 * Get the value of a field
+	 * 
+	 * @param key
+	 * @return
+	 * @throws NoSuchFieldException If field does not exist
+	 */
 	public Serializable getFieldValue(String key) throws NoSuchFieldException {
 		Iterator<Field> it = this.fields.iterator();
 		Field field;
@@ -48,44 +108,10 @@ public class Node implements Serializable, Comparable<Node> {
 	}
 
 	/**
-	 * Called when the node is added to the database
-	 * 
-	 * @param db
-	 * @param uuid
+	 * @return fields
 	 */
-	protected void init(long uuid) {
-		this.uuid = uuid;
-	}
-
-	/**
-	 * @return a copy of the fields
-	 */
-	public HashSet<Field> getFields() {
-		HashSet<Field> resFields = new HashSet<Field>();
-		Iterator<Field> it = this.fields.iterator();
-		Field field;
-		while (it.hasNext()) {
-			field = it.next();
-			resFields.add(new Field(field.getKey(), field.getValue()));
-		}
-		return resFields;
-	}
-
-	/**
-	 * Can set fields solely if
-	 * 
-	 * @param fields
-	 * @throws IllegalArgumentException
-	 * @throws IOException
-	 * @throws InalterableNodeException
-	 */
-	public void setFields(HashSet<Field> fields)
-			throws IllegalArgumentException, IOException, InalterableNodeException {
-		if (this.uuid == null)
-			this.fields = fields;
-		else
-			throw new InalterableNodeException(this.uuid);
-
+	public Set<Field> getFields() {
+		return this.fields;
 	}
 
 	/**
@@ -102,6 +128,24 @@ public class Node implements Serializable, Comparable<Node> {
 		return this.uuid;
 	}
 
+	/**
+	 * Create a copy of a node (new node without uuid)
+	 * 
+	 * @return
+	 */
+	public Node copy() {
+		return new Node(this.nodetype, this.fields);
+	}
+
+	/**
+	 * Called by the database object when the node is added
+	 * 
+	 * @param uuid
+	 */
+	protected void init(long uuid) {
+		this.uuid = uuid;
+	}
+
 	@Override
 	public String toString() {
 		String content = "";
@@ -113,6 +157,9 @@ public class Node implements Serializable, Comparable<Node> {
 		return this.uuid + content;
 	}
 
+	/**
+	 * Nodes are compared by uuid
+	 */
 	@Override
 	public int compareTo(Node o) {
 		return Long.compare(this.getUUID(), o.getUUID());
@@ -131,6 +178,9 @@ public class Node implements Serializable, Comparable<Node> {
 		return result;
 	}
 
+	/**
+	 * 2 nodes are equals if they have the same nodetype and uuid
+	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)

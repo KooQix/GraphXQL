@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
@@ -18,10 +17,12 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 
-import com.esotericsoftware.minlog.Log;
-
+import dev.kooqix.exceptions.JobFailedException;
 import dev.kooqix.exceptions.NodeTypeExistsException;
 
+/**
+ * Hdfs management
+ */
 public class Hdfs {
 	private static Configuration conf = new Configuration();
 
@@ -50,17 +51,20 @@ public class Hdfs {
 	/**
 	 * Rename a file
 	 * 
-	 * @param input
-	 * @param output
+	 * @param src
+	 * @param dest
 	 * @return
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws JobFailedException
 	 */
-	public static boolean renameTo(String input, String output) throws IllegalArgumentException, IOException {
+	public static void renameTo(String src, String dest)
+			throws IllegalArgumentException, IOException, JobFailedException {
 		init();
-		boolean res = fs.rename(new Path(input), new Path(output));
+		boolean res = fs.rename(new Path(src), new Path(dest));
 		close();
-		return res;
+		if (!res)
+			throw new JobFailedException("Failed to rename " + src + " to " + dest);
 	}
 
 	/**

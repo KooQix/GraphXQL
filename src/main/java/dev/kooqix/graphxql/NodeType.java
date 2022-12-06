@@ -4,13 +4,23 @@ import dev.kooqix.exceptions.JobFailedException;
 
 import java.io.Serializable;
 
+/**
+ * Each node has a nodetype defining what kind of node it is
+ */
 public class NodeType implements Serializable {
 
-	private String name;
-	private String path;
+	private String name; // Name of the nodetype
+	private String path; // Where nodes of this type are stored
+	private String dir;
 
+	/**
+	 * Create a new nodetype (not linked to database)
+	 * 
+	 * @param name
+	 */
 	public NodeType(String name) {
 		this.name = name.toLowerCase();
+		this.path = null;
 	}
 
 	/**
@@ -25,17 +35,17 @@ public class NodeType implements Serializable {
 	 * @throws JobFailedException
 	 */
 	public void setName(String name) throws JobFailedException {
-		String oldName = this.name;
+		String newName = name.toLowerCase();
 
-		// // Set directory name
-		// File nodetypeFile = new File(MessageFormat.format("{0}/{1}.{2}", directory,
-		// oldName, EXTENSION));
-
-		// if (nodetypeFile.renameTo(new File(MessageFormat.format("{0}/{1}.{2}",
-		// directory, name, EXTENSION))))
-		// this.name = name;
-		// else
-		// throw new JobFailedException("Failed to rename");
+		// Nodetype is linked to database
+		if (this.path != null) {
+			try {
+				Hdfs.renameTo(this.path, this.dir + "/" + newName);
+			} catch (Exception e) {
+				throw new JobFailedException("Failed to rename " + this.name + " to " + newName);
+			}
+		}
+		this.name = newName;
 	}
 
 	/**
@@ -45,8 +55,14 @@ public class NodeType implements Serializable {
 		return path;
 	}
 
+	/**
+	 * Path to disk (depends on the database it is linked to)
+	 * 
+	 * @param path
+	 */
 	protected void setPath(String path) {
 		this.path = path + "/" + this.name;
+		this.dir = path;
 	}
 
 	@Override
