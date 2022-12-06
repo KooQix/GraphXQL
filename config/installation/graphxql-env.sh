@@ -1,4 +1,4 @@
 #! /bin/bash
 
 
-export GRAPHXQL_HOME="/exports"
+export GRAPHXQL_HOME="/graphxql"
