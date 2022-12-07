@@ -36,7 +36,13 @@ Add to $HADOOP_HOME/etc/hadoop/core-site.xml (considering that hadoop-namenode i
 
 # Run
 
+Cluster mode:
+
     $SPARK_HOME/bin/spark-submit --class dev.kooqix.App --master yarn --deploy-mode cluster graphxql.jar
+
+Local:
+
+    $SPARK_HOME/bin/spark-submit --class dev.kooqix.App --master yarn graphxql.jar
 
 # References
 
