@@ -403,19 +403,27 @@ public class Database implements Serializable {
 		// Delete from disk
 		this.updateNode(node, true);
 
-		long uuid = node.getUUID();
+		try {
+			long uuid = node.getUUID();
 
-		// Delete all relationships including the node (from disk)
-		this.graph.edges().toJavaRDD()
-				.filter(e -> e.srcId() == uuid || e.dstId() == uuid)
-				.foreach(e -> this.updateRel(e, null));
+			// Delete all relationships including the node (from disk)
+			this.graph.edges().toJavaRDD()
+					.filter(e -> e.srcId() == uuid || e.dstId() == uuid)
+					.foreach(e -> this.updateRel(e, null));
 
-		// Update graph without node and deleted relationships
-		this.setGraph(
-				this.graph.vertices().toJavaRDD()
-						.filter(v -> !v._2().equals(node)),
-				this.graph.edges().toJavaRDD()
-						.filter(e -> e.srcId() != uuid && e.dstId() != uuid));
+			// Update graph without node and deleted relationships
+			this.setGraph(
+					this.graph.vertices().toJavaRDD()
+							.filter(v -> !v._2().equals(node)),
+					this.graph.edges().toJavaRDD()
+							.filter(e -> e.srcId() != uuid && e.dstId() != uuid));
+		} catch (Exception e) {
+			// Node fails to delete => throws an error, nothing is modified
+			// Relation fails to delete => add node back to disk and throw error to notify
+			// the user
+			this.appendNode(node);
+			throw e;
+		}
 	}
 
 	/**
