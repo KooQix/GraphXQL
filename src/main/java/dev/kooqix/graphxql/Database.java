@@ -403,11 +403,18 @@ public class Database implements Serializable {
 		// Delete from disk
 		this.updateNode(node, true);
 
-		// Update graph without node
+		long uuid = node.getUUID();
+
+		// Delete all relationships including the node (from disk)
+		this.graph.edges().toJavaRDD()
+				.filter(e -> e.srcId() == uuid || e.dstId() == uuid)
+				.foreach(e -> this.updateRel(e, null));
+
+		// Update graph without node and deleted relationships
 		this.setGraph(
 				this.graph.vertices().toJavaRDD()
 						.filter(v -> !v._2().equals(node)),
-				this.graph.edges().toJavaRDD());
+				this.graph.edges().toJavaRDD().filter(e -> e.srcId() != uuid && e.dstId() != uuid));
 	}
 
 	/**
