@@ -414,7 +414,8 @@ public class Database implements Serializable {
 		this.setGraph(
 				this.graph.vertices().toJavaRDD()
 						.filter(v -> !v._2().equals(node)),
-				this.graph.edges().toJavaRDD().filter(e -> e.srcId() != uuid && e.dstId() != uuid));
+				this.graph.edges().toJavaRDD()
+						.filter(e -> e.srcId() != uuid && e.dstId() != uuid));
 	}
 
 	/**
