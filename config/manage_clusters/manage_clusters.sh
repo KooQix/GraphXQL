@@ -16,7 +16,7 @@ VM_DISK=24GB
 
 
 
-USAGE="./manage_clusters_hadoop.sh <command> <num_cluster 1 | 2>"
+USAGE="./manage_clusters_hadoop.sh <command> <num_cluster 1 | 2 |3>"
 COMMANDS="commands: create; start; stop; delete"
 
 if [[ $# -ne 2 ]]; then

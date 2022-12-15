@@ -1,4 +1,4 @@
-package dev.kooqix.database;
+package dev.kooqix.graphxql;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -17,8 +17,12 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 
+import dev.kooqix.exceptions.JobFailedException;
 import dev.kooqix.exceptions.NodeTypeExistsException;
 
+/**
+ * Hdfs management
+ */
 public class Hdfs {
 	private static Configuration conf = new Configuration();
 
@@ -47,17 +51,20 @@ public class Hdfs {
 	/**
 	 * Rename a file
 	 * 
-	 * @param input
-	 * @param output
+	 * @param src
+	 * @param dest
 	 * @return
 	 * @throws IllegalArgumentException
 	 * @throws IOException
+	 * @throws JobFailedException
 	 */
-	public static boolean renameTo(String input, String output) throws IllegalArgumentException, IOException {
+	public static void renameTo(String src, String dest)
+			throws IllegalArgumentException, IOException, JobFailedException {
 		init();
-		boolean res = fs.rename(new Path(input), new Path(output));
+		boolean res = fs.rename(new Path(src), new Path(dest));
 		close();
-		return res;
+		if (!res)
+			throw new JobFailedException("Failed to rename " + src + " to " + dest);
 	}
 
 	/**
@@ -160,6 +167,20 @@ public class Hdfs {
 	}
 
 	/**
+	 * Append if file exist, else create file and write
+	 * 
+	 * @param filename
+	 * @param content
+	 * @throws IOException
+	 */
+	public static void appendOrWrite(String filename, String content) throws IOException {
+		if (fileExists(filename))
+			appendToFile(filename, content);
+		else
+			writeFile(filename, content);
+	}
+
+	/**
 	 * Copy file
 	 * 
 	 * @param srcFilename
@@ -197,11 +218,11 @@ public class Hdfs {
 	public static void deleteUnder(String directory) throws IOException {
 		Path path;
 
-		List<String> files = listDirectories(directory);
+		List<String> files = listFiles(directory);
 
 		init();
 		for (String file : files) {
-			path = new Path(file);
+			path = new Path(directory + "/" + file);
 			fs.delete(path, true);
 		}
 		close();

@@ -3,7 +3,7 @@
 -   Copy install_spark.sh to host
 
         sudo chmod +x install_spark.sh
-        sudo ./install_spark.sh <num cluster 1 | 2>
+        sudo ./install_spark.sh <num cluster 1 | 2 |3>
 
 # Spark link
 

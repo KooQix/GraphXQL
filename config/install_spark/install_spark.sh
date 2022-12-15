@@ -5,7 +5,7 @@ HADOOP_DIR_NODES=/opt/hadoop
 JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 SPARK_LINK=https://dlcdn.apache.org/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz
 
-USAGE="./install_spark.sh <num cluster 1 | 2>"
+USAGE="./install_spark.sh <num cluster 1 | 2 | 3>"
 
 if [[ $# -ne 1 ]]; then
 	echo $USAGE
